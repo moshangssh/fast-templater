@@ -11,9 +11,10 @@ If your plugin does not need CSS, delete this file.
 
 /* 搜索框样式 */
 .fast-templater-search-container {
-	margin: 16px 0;
-	padding: 0 16px;
+	margin: 0 0 12px 0;
+	padding: 12px;
 	position: relative;
+	flex-shrink: 0;
 }
 
 .fast-templater-search-input {
@@ -94,29 +95,30 @@ If your plugin does not need CSS, delete this file.
 /* 主容器 - 双列布局 */
 .fast-templater-main-container {
 	display: flex;
-	gap: 16px;
-	margin: 16px 0;
-	height: 500px; /* 固定高度 */
-	max-height: 500px;
+	gap: 12px;
+	margin: 12px 0;
+	height: 480px; /* 固定高度 */
+	max-height: 480px;
 }
 
-/* 左侧列表容器 */
-.fast-templater-list-container {
-	flex: 0 0 35%; /* 固定占35%宽度 */
-	min-width: 280px; /* 最小宽度 */
-	max-width: 400px; /* 最大宽度 */
+/* 左侧区域容器（搜索框 + 模板列表） */
+.fast-templater-left-container {
+	flex: 0 0 40%; /* 增加到40%宽度，给列表更多空间 */
+	min-width: 250px; /* 减小最小宽度 */
+	max-width: 350px; /* 减小最大宽度 */
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
+	border-right: 1px solid var(--background-modifier-border);
+	padding-right: 12px;
 }
 
 /* 右侧预览容器 */
 .fast-templater-preview-container {
 	flex: 1; /* 占据剩余空间 */
 	min-width: 0; /* 允许收缩 */
-	border-left: 1px solid var(--background-modifier-border);
-	padding-left: 20px;
+	padding-left: 12px;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -136,7 +138,7 @@ If your plugin does not need CSS, delete this file.
 	background-color: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 6px;
-	padding: 16px;
+	padding: 12px;
 	overflow-y: auto;
 	height: 0; /* 强制使用flex布局 */
 }
@@ -432,27 +434,29 @@ If your plugin does not need CSS, delete this file.
 @media (max-width: 768px) {
 	.fast-templater-main-container {
 		flex-direction: column;
-		gap: 12px;
-		height: 600px; /* 固定高度 */
-		max-height: 600px;
+		gap: 10px;
+		height: 550px; /* 固定高度 */
+		max-height: 550px;
+	}
+
+	.fast-templater-left-container {
+		border-right: none;
+		border-bottom: 1px solid var(--background-modifier-border);
+		padding-right: 0;
+		padding-bottom: 12px;
+		flex: 1;
+		height: auto;
 	}
 
 	.fast-templater-preview-container {
-		border-left: none;
-		border-top: 1px solid var(--background-modifier-border);
 		padding-left: 0;
-		padding-top: 12px;
-		height: 250px; /* 固定高度 */
+		padding-top: 0;
+		height: 220px; /* 固定高度 */
 		flex: none; /* 不自动伸缩 */
 	}
 
 	.fast-templater-preview-content {
 		height: calc(100% - 30px); /* 减去标题高度 */
-	}
-
-	.fast-templater-list-container {
-		flex: 1;
-		height: auto;
 	}
 
 	.fast-templater-modal-container {
@@ -511,6 +515,11 @@ If your plugin does not need CSS, delete this file.
 	}
 
 	/* 移动端搜索框优化 */
+	.fast-templater-search-container {
+		padding: 12px 16px;
+		margin: 0 0 12px 0;
+	}
+
 	.fast-templater-search-input {
 		padding: 14px 16px;
 		font-size: 16px; /* 防止iOS缩放 */
@@ -537,22 +546,22 @@ If your plugin does not need CSS, delete this file.
 @media (max-width: 480px) {
 	.fast-templater-main-container {
 		margin: 8px 0;
-		height: 550px; /* 小屏幕固定高度 */
+		height: 500px; /* 小屏幕固定高度 */
 	}
 
 	.fast-templater-search-container {
-		margin: 8px 0;
-		padding: 0 8px;
+		padding: 12px 8px;
+		margin: 0 0 8px 0;
 	}
 
-	.fast-templater-list-container {
+	.fast-templater-left-container {
 		padding: 0 8px;
 		flex: 1;
 	}
 
 	.fast-templater-preview-container {
 		padding: 0 8px;
-		height: 220px; /* 小屏幕固定高度 */
+		height: 200px; /* 小屏幕固定高度 */
 		flex: none;
 	}
 
@@ -612,7 +621,6 @@ If your plugin does not need CSS, delete this file.
 		padding: 16px;
 		font-size: 16px;
 		border-radius: 8px;
-		margin: 8px;
 	}
 
 	/* 小屏幕模板列表项进一步优化 */

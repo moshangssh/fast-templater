@@ -949,14 +949,20 @@ class TemplateSelectorModal extends Modal {
 		const {contentEl} = this;
 
 		// 设置模态窗口的宽度
-		this.modalEl.style.width = '90vw';
-		this.modalEl.style.maxWidth = '1400px';
+		this.modalEl.style.width = '85vw';
+		this.modalEl.style.maxWidth = '1000px';
 
 		// 创建模态窗口标题
 		contentEl.createEl('h2', {text: '选择模板'});
 
+		// 创建双列布局容器
+		const mainContainerEl = contentEl.createDiv('fast-templater-main-container');
+
+		// 创建左侧区域（搜索框 + 模板列表）
+		const leftContainerEl = mainContainerEl.createDiv('fast-templater-left-container');
+
 		// 创建搜索输入框容器
-		const searchContainerEl = contentEl.createDiv('fast-templater-search-container');
+		const searchContainerEl = leftContainerEl.createDiv('fast-templater-search-container');
 		const searchInputEl = searchContainerEl.createEl('input', {
 			type: 'text',
 			placeholder: '搜索模板...',
@@ -986,15 +992,8 @@ class TemplateSelectorModal extends Modal {
 		searchInputEl.addEventListener('input', this.handleSearchInput);
 		searchInputEl.addEventListener('keydown', this.handleKeyDown);
 
-
-		// 创建双列布局容器
-		const mainContainerEl = contentEl.createDiv('fast-templater-main-container');
-
-		// 创建左侧模板列表容器
-		const listContainerEl = mainContainerEl.createDiv('fast-templater-list-container');
-
 		// 创建可滚动的列表容器
-		const containerEl = listContainerEl.createDiv('fast-templater-modal-container');
+		const containerEl = leftContainerEl.createDiv('fast-templater-modal-container');
 
 		// 创建右侧预览面板
 		const previewContainerEl = mainContainerEl.createDiv('fast-templater-preview-container');
