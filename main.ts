@@ -243,6 +243,9 @@ export default class FastTemplater extends Plugin {
 				}
 			}
 
+			// 按模板名称进行 A-Z 排序
+			this.templates.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN', { sensitivity: 'base' }));
+
 			// 更新状态
 			if (this.templates.length === 0) {
 				this.templateLoadStatus = {
@@ -377,10 +380,13 @@ class TemplateSelectorModal extends Modal {
 		}
 
 		const normalizedQuery = query.toLowerCase().trim();
-		return this.templates.filter(template =>
+		const filteredTemplates = this.templates.filter(template =>
 			template.name.toLowerCase().includes(normalizedQuery) ||
 			template.content.toLowerCase().includes(normalizedQuery)
 		);
+
+		// 搜索结果也按字母顺序排序
+		return filteredTemplates.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN', { sensitivity: 'base' }));
 	}
 
 	/**
@@ -389,6 +395,12 @@ class TemplateSelectorModal extends Modal {
 	private handleSearchInput = (event: Event) => {
 		const target = event.target as HTMLInputElement;
 		this.searchQuery = target.value;
+
+		// 控制清空按钮的显示/隐藏
+		const clearButtonEl = this.contentEl.querySelector('.fast-templater-search-clear') as HTMLElement;
+		if (clearButtonEl) {
+			clearButtonEl.style.display = this.searchQuery ? 'block' : 'none';
+		}
 
 		// 清除之前的防抖定时器
 		if (this.searchDebounceTimer !== null) {
@@ -437,14 +449,8 @@ class TemplateSelectorModal extends Modal {
 				break;
 			}
 			case 'Escape': {
-				const searchInputEl = this.contentEl.querySelector('.fast-templater-search-input') as HTMLInputElement;
-				if (searchInputEl) {
-					searchInputEl.value = '';
-					this.searchQuery = '';
-					this.filteredTemplates = [...this.templates];
-					this.updateTemplateList();
-				}
-				event.preventDefault();
+				// 让 Obsidian 处理默认的 Escape 行为（关闭模态窗口）
+				// 不阻止事件冒泡，允许 Obsidian 的默认模态窗口关闭行为生效
 				break;
 			}
 		}
@@ -955,6 +961,25 @@ class TemplateSelectorModal extends Modal {
 			type: 'text',
 			placeholder: '搜索模板...',
 			cls: 'fast-templater-search-input'
+		});
+
+		// 创建清空搜索框的 X 按钮
+		const clearButtonEl = searchContainerEl.createEl('button', {
+			type: 'button',
+			text: '×',
+			cls: 'fast-templater-search-clear'
+		});
+		clearButtonEl.title = '清空搜索';
+		clearButtonEl.setAttribute('aria-label', '清空搜索');
+
+		// 清空按钮点击事件
+		clearButtonEl.addEventListener('click', () => {
+			searchInputEl.value = '';
+			this.searchQuery = '';
+			this.filteredTemplates = [...this.templates];
+			this.updateTemplateList();
+			searchInputEl.focus();
+			clearButtonEl.style.display = 'none'; // 点击后隐藏
 		});
 
 		// 为搜索输入框添加事件监听器

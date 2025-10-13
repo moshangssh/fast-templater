@@ -13,11 +13,12 @@ If your plugin does not need CSS, delete this file.
 .fast-templater-search-container {
 	margin: 16px 0;
 	padding: 0 16px;
+	position: relative;
 }
 
 .fast-templater-search-input {
 	width: 100%;
-	padding: 10px 12px;
+	padding: 10px 36px 10px 12px; /* 右侧内边距给按钮留出空间 */
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 6px;
 	background-color: var(--background-primary);
@@ -27,6 +28,42 @@ If your plugin does not need CSS, delete this file.
 	transition: all 0.2s ease;
 	box-sizing: border-box;
 	font-weight: 400;
+}
+
+/* 清空搜索按钮 */
+.fast-templater-search-clear {
+	position: absolute;
+	top: 50%;
+	right: 28px; /* 16px (容器内边距) + 12px */
+	transform: translateY(-50%);
+	width: 20px;
+	height: 20px;
+	background: transparent;
+	border: none;
+	border-radius: 50%;
+	padding: 0;
+	margin: 0;
+	font-size: 18px;
+	line-height: 20px;
+	color: var(--text-muted);
+	cursor: pointer;
+	display: none; /* 默认隐藏，由 JS 控制 */
+	transition: all 0.15s ease;
+	-webkit-tap-highlight-color: transparent;
+	text-align: center;
+	font-weight: 300;
+}
+
+.fast-templater-search-clear:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+	transform: translateY(-50%) scale(1.05);
+}
+
+.fast-templater-search-clear:active {
+	color: var(--interactive-accent);
+	background-color: var(--background-modifier-border);
+	transform: translateY(-50%) scale(0.95);
 }
 
 .fast-templater-search-input:focus {
