@@ -358,16 +358,14 @@ If your plugin does not need CSS, delete this file.
 	transform-origin: left;
 }
 
-.fast-templater-template-item:hover,
-.fast-templater-template-item.fast-templater-template-item-hover {
+.fast-templater-template-item:hover {
 	background-color: var(--background-modifier-hover);
 	border-color: var(--interactive-accent);
 	transform: translateY(-1px);
 	box-shadow: 0 2px 8px rgba(var(--interactive-accent-rgb), 0.15);
 }
 
-.fast-templater-template-item:hover::before,
-.fast-templater-template-item.fast-templater-template-item-hover::before {
+.fast-templater-template-item:hover::before {
 	transform: scaleX(1);
 }
 
@@ -521,7 +519,7 @@ If your plugin does not need CSS, delete this file.
 	}
 
 	.fast-templater-search-input {
-		padding: 14px 16px;
+		padding: 14px 36px 14px 16px; /* 保持右侧按钮空间 */
 		font-size: 16px; /* 防止iOS缩放 */
 		border-radius: 8px;
 	}
@@ -544,6 +542,7 @@ If your plugin does not need CSS, delete this file.
 }
 
 @media (max-width: 480px) {
+	/* 只覆盖需要在小屏幕上进一步调整的样式 */
 	.fast-templater-main-container {
 		margin: 8px 0;
 		height: 500px; /* 小屏幕固定高度 */
@@ -556,27 +555,18 @@ If your plugin does not need CSS, delete this file.
 
 	.fast-templater-left-container {
 		padding: 0 8px;
-		flex: 1;
 	}
 
 	.fast-templater-preview-container {
 		padding: 0 8px;
 		height: 200px; /* 小屏幕固定高度 */
-		flex: none;
-	}
-
-	.fast-templater-preview-content {
-		padding: 12px;
-		height: calc(100% - 30px);
 	}
 
 	.fast-templater-modal-container {
 		padding: 8px 0;
-		flex: 1;
-		height: 0;
 	}
 
-	/* 小屏幕状态容器优化 */
+	/* 小屏幕状态容器优化 - 只调整需要改变的属性 */
 	.fast-templater-status-container {
 		padding: 24px 12px;
 		margin: 0 4px;
@@ -594,40 +584,29 @@ If your plugin does not need CSS, delete this file.
 
 	.fast-templater-status-message {
 		font-size: 12px;
-		line-height: 1.5;
 		padding: 12px;
 		margin: 12px 0;
 	}
 
 	.fast-templater-status-actions {
 		gap: 10px;
-		flex-direction: column;
-		width: 100%;
 	}
 
 	.fast-templater-status-actions button {
-		width: 100%;
-		max-width: none;
+		max-width: none; /* 移除最大宽度限制 */
 		padding: 16px 20px; /* 更大的触摸目标 */
-		font-size: 16px;
-		font-weight: 500;
-		border-radius: 8px;
 		min-height: 52px;
-		-webkit-tap-highlight-color: transparent;
 	}
 
-	/* 小屏幕搜索框进一步优化 */
+	/* 小屏幕搜索框进一步优化 - 只调整需要改变的属性 */
 	.fast-templater-search-input {
-		padding: 16px;
-		font-size: 16px;
-		border-radius: 8px;
+		padding: 16px 36px 16px 16px; /* 保持右侧按钮空间 */
 	}
 
-	/* 小屏幕模板列表项进一步优化 */
+	/* 小屏幕模板列表项进一步优化 - 只调整需要改变的属性 */
 	.fast-templater-template-item {
 		padding: 18px 16px;
 		margin-bottom: 12px;
-		border-radius: 8px;
 		min-height: 56px; /* 增大最小触摸目标 */
 	}
 

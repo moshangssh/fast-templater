@@ -14,9 +14,8 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@eslint/js": "^9.37.0",
+		"@types/js-yaml": "^4.0.9",
 		"@types/node": "^16.11.6",
-		"@typescript-eslint/eslint-plugin": "5.29.0",
-		"@typescript-eslint/parser": "5.29.0",
 		"builtin-modules": "3.3.0",
 		"esbuild": "0.17.3",
 		"eslint": "^9.37.0",
@@ -24,5 +23,8 @@
 		"tslib": "2.4.0",
 		"typescript": "^5.9.3",
 		"typescript-eslint": "^8.46.0"
+	},
+	"dependencies": {
+		"js-yaml": "^4.1.0"
 	}
 }

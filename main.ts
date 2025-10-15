@@ -1,10 +1,12 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, Component, MarkdownRenderer } from 'obsidian';
+import * as yaml from 'js-yaml';
 
 // Remember to rename these classes and interfaces!
 
 interface FastTemplaterSettings {
 	templateFolderPath: string; // 模板文件夹路径
 	enableTemplaterIntegration: boolean; // 是否启用 Templater 集成
+	enableFrontmatterMerge: boolean; // 是否启用智能 Frontmatter 合并
 }
 
 interface Template {
@@ -31,8 +33,12 @@ interface TemplateLoadResult {
 
 const DEFAULT_SETTINGS: FastTemplaterSettings = {
 	templateFolderPath: 'Templates',
-	enableTemplaterIntegration: true // 默认启用 Templater 集成
+	enableTemplaterIntegration: true, // 默认启用 Templater 集成
+	enableFrontmatterMerge: true // 默认启用智能 Frontmatter 合并
 }
+
+// Templater 运行模式常量
+const TEMPLATER_DYNAMIC_MODE = 4; // DynamicProcessor 模式：动态处理模板内容
 
 export default class FastTemplater extends Plugin {
 	settings: FastTemplaterSettings;
@@ -61,15 +67,6 @@ export default class FastTemplater extends Plugin {
 		};
 		updateStatusBar();
 
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-about-modal',
-			name: '关于 Fast Templater',
-			icon: 'info',
-			callback: () => {
-				new AboutModal(this.app).open();
-			}
-		});
 		// This adds an editor command that can perform some operation on the current editor instance
 		this.addCommand({
 			id: 'insert-template-placeholder',
@@ -284,9 +281,21 @@ export default class FastTemplater extends Plugin {
 
 	/**
 	 * 重新加载模板文件
+	 * @param showNotice 是否显示通知，默认为 false
 	 */
-	async reloadTemplates(): Promise<TemplateLoadResult> {
-		return await this.loadTemplates();
+	async reloadTemplates(showNotice: boolean = false): Promise<TemplateLoadResult> {
+		const result = await this.loadTemplates();
+
+		// 根据参数决定是否显示通知
+		if (showNotice) {
+			if (result.status === 'success') {
+				new Notice(`✅ ${result.message}`);
+			} else {
+				new Notice(`⚠️ ${result.message}`);
+			}
+		}
+
+		return result;
 	}
 
 	/**
@@ -328,26 +337,6 @@ export default class FastTemplater extends Plugin {
 	}
 }
 
-class AboutModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.createEl('h2', {text: 'Fast Templater'});
-		contentEl.createEl('p', {text: '可视化模板插件，帮助您通过可视化界面插入模板片段。'});
-		contentEl.createEl('p', {text: '版本: 1.0.0'});
-
-		const closeBtn = contentEl.createEl('button', {text: '关闭'});
-		closeBtn.onclick = () => this.close();
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
-}
 
 class TemplateSelectorModal extends Modal {
 	templates: Template[];
@@ -361,6 +350,7 @@ class TemplateSelectorModal extends Modal {
 	private templateLoadStatus: TemplateLoadResult; // 模板加载状态
 	private activeIndex = 0; // 用于键盘导航
 	private listEl: HTMLElement | null = null; // 模板列表元素
+	private searchInputEl: HTMLInputElement | null = null; // 搜索输入框引用，用于移除事件监听器
 
 	constructor(app: App, plugin: FastTemplater) {
 		super(app);
@@ -662,12 +652,11 @@ class TemplateSelectorModal extends Modal {
 
 	/**
 	 * 重新加载模板并提供用户反馈（辅助方法）
-	 * 此方法统一处理以下逻辑，消除代码重复：
+	 * 此方法统一处理UI反馈逻辑：
 	 * 1. 禁用搜索输入框并添加加载状态样式
-	 * 2. 调用插件的 reloadTemplates 方法重新加载模板
+	 * 2. 调用插件的 reloadTemplates 方法重新加载模板（启用通知）
 	 * 3. 更新内部模板数据和UI显示
 	 * 4. 恢复搜索输入框状态并重新聚焦
-	 * 5. 根据加载结果显示用户通知
 	 * @returns Promise<TemplateLoadResult> 模板加载结果
 	 */
 	private async reloadTemplatesWithFeedback(): Promise<TemplateLoadResult> {
@@ -677,7 +666,8 @@ class TemplateSelectorModal extends Modal {
 			searchInputEl.classList.add('fast-templater-search-loading');
 		}
 
-		const result = await this.plugin.reloadTemplates();
+		// 调用插件方法并启用通知
+		const result = await this.plugin.reloadTemplates(true);
 		this.templates = this.plugin.getTemplates();
 		this.filteredTemplates = [...this.templates];
 		this.templateLoadStatus = result;
@@ -687,12 +677,6 @@ class TemplateSelectorModal extends Modal {
 			searchInputEl.disabled = false;
 			searchInputEl.classList.remove('fast-templater-search-loading');
 			searchInputEl.focus();
-		}
-
-		if (result.status === 'success') {
-			new Notice(`✅ ${result.message}`);
-		} else {
-			new Notice(`⚠️ ${result.message}`);
 		}
 
 		return result;
@@ -800,6 +784,156 @@ class TemplateSelectorModal extends Modal {
 	}
 
 	/**
+	 * 调用 Templater 处理模板内容
+	 */
+	private async runTemplater(template: Template): Promise<string> {
+		try {
+			const templater = this.getTemplaterPlugin();
+
+			if (templater && templater.templater) {
+				// 使用 Templater 的 API 解析模板内容
+				const abstractFile = this.app.vault.getAbstractFileByPath(template.path);
+
+				// 检查是否是有效的 TFile 对象
+				if (abstractFile && 'extension' in abstractFile && abstractFile.extension === 'md') {
+					const templateFile = abstractFile;
+
+					// 获取当前活动文件
+					const activeFile = this.app.workspace.getActiveFile();
+
+					if (!activeFile) {
+						throw new Error('无法获取当前活动文件');
+					}
+
+					// 创建 RunningConfig 对象
+					const config = {
+						template_file: templateFile,
+						target_file: activeFile,
+						run_mode: TEMPLATER_DYNAMIC_MODE, // DynamicProcessor 模式：动态处理模板内容
+						active_file: activeFile
+					};
+
+					// 调用 read_and_parse_template
+					const parsedContent = await templater.templater.read_and_parse_template(config);
+					return parsedContent;
+				} else {
+					throw new Error('无法获取有效的 TFile 对象');
+				}
+			} else {
+				throw new Error('Templater API 不可用');
+			}
+		} catch (error) {
+			console.warn('Fast Templater: Templater 处理失败', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * 解析模板内容，分离 frontmatter 和主体内容
+	 */
+	private parseTemplateContent(content: string): { frontmatter: Record<string, any>, body: string } {
+		// 使用正则表达式匹配 frontmatter
+		const frontmatterRegex = /^---\n([\s\S]+?)\n---/;
+		const match = content.match(frontmatterRegex);
+
+		if (match) {
+			try {
+				// 解析 frontmatter
+				const frontmatterText = match[1];
+				const frontmatter = (yaml.load(frontmatterText) || {}) as Record<string, any>;
+
+				// 获取主体内容（移除 frontmatter）
+				const body = content.replace(frontmatterRegex, '').trim();
+
+				return { frontmatter, body };
+			} catch (error) {
+				console.warn('Fast Templater: Frontmatter 解析失败', error);
+				// 如果解析失败，将整个内容作为主体
+				return { frontmatter: {}, body: content };
+			}
+		} else {
+			// 没有找到 frontmatter
+			return { frontmatter: {}, body: content };
+		}
+	}
+
+	/**
+	 * 获取当前笔记的元数据信息
+	 */
+	private getNoteMetadata(): { frontmatter: Record<string, any>, position: any } {
+		const activeFile = this.app.workspace.getActiveFile();
+		if (!activeFile) {
+			return { frontmatter: {}, position: null };
+		}
+
+		const fileCache = this.app.metadataCache.getFileCache(activeFile);
+		if (!fileCache || !fileCache.frontmatter) {
+			return { frontmatter: {}, position: null };
+		}
+
+		return {
+			frontmatter: fileCache.frontmatter || {},
+			position: fileCache.frontmatterPosition
+		};
+	}
+
+	/**
+	 * 合并两个 frontmatter 对象
+	 */
+	private mergeFrontmatters(noteFM: Record<string, any>, templateFM: Record<string, any>): Record<string, any> {
+		const merged = { ...noteFM };
+
+		// 遍历模板的 frontmatter
+		for (const [key, templateValue] of Object.entries(templateFM)) {
+			if (key === 'tags') {
+				// 特殊处理 tags 字段：合并去重
+				const noteTags = Array.isArray(merged[key]) ? merged[key] :
+								 (merged[key] ? [merged[key]] : []);
+				const templateTags = Array.isArray(templateValue) ? templateValue :
+									(templateValue ? [templateValue] : []);
+
+				// 合并并去重
+				const allTags = [...noteTags, ...templateTags];
+				merged[key] = [...new Set(allTags)];
+			} else {
+				// 其他字段：模板的值覆盖笔记的值
+				merged[key] = templateValue;
+			}
+		}
+
+		return merged;
+	}
+
+	/**
+	 * 更新笔记的 frontmatter
+	 */
+	private updateNoteFrontmatter(editor: Editor, newFM: Record<string, any>, position: any): void {
+		try {
+			// 将新的 frontmatter 转换为 YAML 字符串
+			const newYamlString = yaml.dump(newFM, {
+				indent: 2,
+				lineWidth: -1,
+				noRefs: true,
+				sortKeys: false
+			});
+
+			if (position && position.start && position.end) {
+				// 如果笔记已有 frontmatter，替换它
+				const startPos = { line: position.start.line, ch: 0 };
+				const endPos = { line: position.end.line + 1, ch: 0 }; // +1 因为 end.line 是最后一行
+				editor.replaceRange(`---\n${newYamlString}---\n\n`, startPos, endPos);
+			} else {
+				// 如果笔记没有 frontmatter，在文件开头插入
+				const startPos = { line: 0, ch: 0 };
+				editor.replaceRange(`---\n${newYamlString}---\n\n`, startPos);
+			}
+		} catch (error) {
+			console.error('Fast Templater: 更新 frontmatter 失败', error);
+			throw error;
+		}
+	}
+
+	/**
 	 * 插入模板到编辑器
 	 */
 	private async insertTemplate(template: Template) {
@@ -813,87 +947,13 @@ class TemplateSelectorModal extends Modal {
 			}
 
 			const editor = activeView.editor;
-			const cursor = editor.getCursor();
 
-			// 检查是否启用 Templater 集成
-			if (this.plugin.settings.enableTemplaterIntegration && this.isTemplaterEnabled()) {
-				try {
-					const templater = this.getTemplaterPlugin();
-
-					if (templater && templater.templater) {
-						// 使用 Templater 的 API 解析模板内容
-						// read_and_parse_template 需要一个 RunningConfig 对象,而不是单个 TFile
-						const abstractFile = this.app.vault.getAbstractFileByPath(template.path);
-
-						// 检查是否是有效的 TFile 对象(必须有 extension 属性且为文件而非文件夹)
-						if (abstractFile && 'extension' in abstractFile && abstractFile.extension === 'md') {
-							const templateFile = abstractFile;
-
-							// 获取当前活动文件(Templater 需要目标文件上下文)
-							const activeFile = this.app.workspace.getActiveFile();
-
-							if (!activeFile) {
-								console.warn('Fast Templater: 无法获取当前活动文件');
-								editor.replaceSelection(template.content);
-								new Notice(`✅ 模板 "${template.name}" 已插入(无法获取活动文件,已回退到普通插入)。`);
-								return;
-							}
-
-							console.log('Fast Templater: 准备调用 Templater API', {
-								templatePath: templateFile.path,
-								templateName: templateFile.name,
-								activeFilePath: activeFile.path,
-								activeFileName: activeFile.name
-							});
-
-							// 创建 RunningConfig 对象
-							// read_and_parse_template 的参数必须是 RunningConfig,包含:
-							// - template_file: 模板文件
-							// - target_file: 目标文件(当前活动文件)
-							// - run_mode: 运行模式(4 = DynamicProcessor,用于动态插入)
-							// - active_file: 当前活动文件
-							const config = {
-								template_file: templateFile,
-								target_file: activeFile,
-								run_mode: 4, // DynamicProcessor 模式
-								active_file: activeFile
-							};
-
-							// 调用 read_and_parse_template
-							const parsedContent = await templater.templater.read_and_parse_template(config);
-
-							// 插入解析后的内容
-							editor.replaceSelection(parsedContent);
-
-							new Notice(`✅ 模板 "${template.name}" 已插入并使用 Templater 处理。`);
-						} else {
-							// 如果无法获取文件对象,回退到普通插入
-							console.warn('Fast Templater: 无法获取有效的 TFile 对象', {
-								path: template.path,
-								abstractFile: abstractFile
-							});
-							editor.replaceSelection(template.content);
-							new Notice(`✅ 模板 "${template.name}" 已插入(无法获取文件对象,已回退到普通插入)。`);
-						}
-					} else {
-						// Templater 已安装但 API 不可用，回退到普通插入
-						editor.replaceSelection(template.content);
-						new Notice(`✅ 模板 "${template.name}" 已插入(Templater API 不可用)。`);
-					}
-				} catch (templaterError) {
-					// Templater 处理失败，回退到普通插入
-					console.warn('Fast Templater: Templater 处理失败，使用普通插入', templaterError);
-					editor.replaceSelection(template.content);
-					new Notice(`✅ 模板 "${template.name}" 已插入(Templater 处理失败，已回退到普通插入)。`);
-				}
+			// 检查是否启用智能 Frontmatter 合并功能
+			if (this.plugin.settings.enableFrontmatterMerge) {
+				await this.insertTemplateWithFrontmatterMerge(template, editor);
 			} else {
-				// 未启用 Templater 集成或 Templater 未安装，直接插入模板内容
-				editor.replaceSelection(template.content);
-
-				const notice = this.plugin.settings.enableTemplaterIntegration && !this.isTemplaterEnabled()
-					? `✅ 模板 "${template.name}" 已插入(未检测到 Templater 插件)。`
-					: `✅ 模板 "${template.name}" 已插入。`;
-				new Notice(notice);
+				// 使用原有的逻辑（不进行 frontmatter 合并）
+				await this.insertTemplateWithoutFrontmatterMerge(template, editor);
 			}
 
 			// 插入成功后关闭模态窗口
@@ -902,6 +962,107 @@ class TemplateSelectorModal extends Modal {
 		} catch (error) {
 			console.error('Fast Templater: 插入模板失败', error);
 			new Notice('❌ 插入模板失败，请稍后重试。');
+		}
+	}
+
+	/**
+	 * 处理模板内容的通用方法
+	 * 统一处理 Templater 集成，返回处理后的模板内容
+	 * @param template 要处理的模板
+	 * @returns 处理后的模板内容
+	 */
+	private async processTemplateContent(template: Template): Promise<{ content: string; usedTemplater: boolean; error?: string }> {
+		let processedContent = template.content;
+		let usedTemplater = false;
+		let error: string | undefined;
+
+		// 检查是否启用 Templater 集成
+		if (this.plugin.settings.enableTemplaterIntegration && this.isTemplaterEnabled()) {
+			try {
+				processedContent = await this.runTemplater(template);
+				usedTemplater = true;
+			} catch (templaterError) {
+				console.warn('Fast Templater: Templater 处理失败，使用原始模板内容', templaterError);
+				error = 'Templater 处理失败，使用原始模板内容';
+				// 保持原始内容，不改变 usedTemplater 状态
+			}
+		}
+
+		return { content: processedContent, usedTemplater, error };
+	}
+
+	/**
+	 * 使用智能 Frontmatter 合并功能插入模板
+	 */
+	private async insertTemplateWithFrontmatterMerge(template: Template, editor: Editor) {
+		try {
+			// 1. 统一处理模板内容（包括 Templater 集成）
+			const { content: processedContent, usedTemplater, error } = await this.processTemplateContent(template);
+
+			// 2. 如果有 Templater 处理错误，显示通知
+			if (error) {
+				new Notice(`⚠️ ${error}进行 frontmatter 合并`);
+			}
+
+			// 3. 解析处理后的内容，分离 frontmatter 和主体
+			const { frontmatter: templateFM, body: templateBody } = this.parseTemplateContent(processedContent);
+
+			// 4. 获取当前笔记的元数据
+			const { frontmatter: noteFM, position: notePosition } = this.getNoteMetadata();
+
+			// 5. 如果模板没有 frontmatter，直接插入处理后的内容
+			if (Object.keys(templateFM).length === 0) {
+				editor.replaceSelection(processedContent);
+				const notice = `✅ 模板 "${template.name}" 已插入（模板无 frontmatter，直接插入）${usedTemplater ? '并使用 Templater 处理' : ''}。`;
+				new Notice(notice);
+				return;
+			}
+
+			// 6. 合并 frontmatter
+			const mergedFM = this.mergeFrontmatters(noteFM, templateFM);
+
+			// 7. 更新笔记的 frontmatter
+			this.updateNoteFrontmatter(editor, mergedFM, notePosition);
+
+			// 8. 插入模板主体内容到光标位置
+			if (templateBody.trim()) {
+				editor.replaceSelection(templateBody);
+			}
+
+			// 9. 成功通知
+			const templaterInfo = usedTemplater ? '并使用 Templater 处理' : '';
+			const mergeInfo = Object.keys(templateFM).length > 0
+				? ` 已合并 ${Object.keys(templateFM).length} 个 frontmatter 字段`
+				: '';
+			new Notice(`✅ 模板 "${template.name}" 已插入${templaterInfo}${mergeInfo}。`);
+
+		} catch (error) {
+			console.error('Fast Templater: 智能 frontmatter 合并失败', error);
+			// 如果智能合并失败，回退到普通插入
+			new Notice('⚠️ Frontmatter 合并失败，回退到普通插入');
+			editor.replaceSelection(template.content);
+		}
+	}
+
+	/**
+	 * 不使用智能 Frontmatter 合并功能插入模板（原有逻辑）
+	 */
+	private async insertTemplateWithoutFrontmatterMerge(template: Template, editor: Editor) {
+		// 1. 统一处理模板内容（包括 Templater 集成）
+		const { content: processedContent, usedTemplater, error } = await this.processTemplateContent(template);
+
+		// 2. 插入处理后的内容
+		editor.replaceSelection(processedContent);
+
+		// 3. 根据处理结果显示相应的通知
+		if (usedTemplater) {
+			new Notice(`✅ 模板 "${template.name}" 已插入并使用 Templater 处理。`);
+		} else if (this.plugin.settings.enableTemplaterIntegration && !this.isTemplaterEnabled()) {
+			new Notice(`✅ 模板 "${template.name}" 已插入(未检测到 Templater 插件)。`);
+		} else if (error) {
+			new Notice(`✅ 模板 "${template.name}" 已插入(${error})。`);
+		} else {
+			new Notice(`✅ 模板 "${template.name}" 已插入。`);
 		}
 	}
 
@@ -963,7 +1124,7 @@ class TemplateSelectorModal extends Modal {
 
 		// 创建搜索输入框容器
 		const searchContainerEl = leftContainerEl.createDiv('fast-templater-search-container');
-		const searchInputEl = searchContainerEl.createEl('input', {
+		this.searchInputEl = searchContainerEl.createEl('input', {
 			type: 'text',
 			placeholder: '搜索模板...',
 			cls: 'fast-templater-search-input'
@@ -980,17 +1141,17 @@ class TemplateSelectorModal extends Modal {
 
 		// 清空按钮点击事件
 		clearButtonEl.addEventListener('click', () => {
-			searchInputEl.value = '';
+			this.searchInputEl!.value = '';
 			this.searchQuery = '';
 			this.filteredTemplates = [...this.templates];
 			this.updateTemplateList();
-			searchInputEl.focus();
+			this.searchInputEl!.focus();
 			clearButtonEl.style.display = 'none'; // 点击后隐藏
 		});
 
 		// 为搜索输入框添加事件监听器
-		searchInputEl.addEventListener('input', this.handleSearchInput);
-		searchInputEl.addEventListener('keydown', this.handleKeyDown);
+		this.searchInputEl.addEventListener('input', this.handleSearchInput);
+		this.searchInputEl.addEventListener('keydown', this.handleKeyDown);
 
 		// 创建可滚动的列表容器
 		const containerEl = leftContainerEl.createDiv('fast-templater-modal-container');
@@ -1014,11 +1175,18 @@ class TemplateSelectorModal extends Modal {
 		closeBtn.onclick = () => this.close();
 
 		// 聚焦到搜索输入框以便用户直接输入
-		setTimeout(() => searchInputEl.focus(), 100);
+		setTimeout(() => this.searchInputEl?.focus(), 100);
 	}
 
 	onClose() {
 		const {contentEl} = this;
+
+		// 移除搜索输入框的事件监听器，防止内存泄漏
+		if (this.searchInputEl) {
+			this.searchInputEl.removeEventListener('input', this.handleSearchInput);
+			this.searchInputEl.removeEventListener('keydown', this.handleKeyDown);
+			this.searchInputEl = null;
+		}
 
 		// 清理防抖定时器
 		if (this.searchDebounceTimer !== null) {
@@ -1042,6 +1210,75 @@ class FastTemplaterSettingTab extends PluginSettingTab {
 	constructor(app: App, plugin: FastTemplater) {
 		super(app, plugin);
 		this.plugin = plugin;
+	}
+
+	/**
+	 * 统一的状态UI渲染辅助函数
+	 * 消除 renderTemplaterStatus 和 renderTemplateStatus 中的重复代码
+	 * @param containerEl 容器元素
+	 * @param config 状态配置
+	 */
+	private renderStatusBlock(containerEl: HTMLElement, config: {
+		icon: string;
+		title: string;
+		items: Array<{
+			label: string;
+			content: string;
+			type?: 'text' | 'code' | 'status';
+			color?: string;
+		}>;
+		actions?: Array<{
+			text: string;
+			onClick: () => void;
+			cls?: string;
+		}>;
+	}): HTMLElement {
+		const statusEl = containerEl.createEl('div', { cls: 'setting-item-description' });
+
+		// 创建状态内容容器
+		const contentEl = statusEl.createEl('small');
+		contentEl.createEl('span', { text: `${config.icon} ` });
+		contentEl.createEl('strong', { text: `${config.title}：` });
+		contentEl.createEl('br');
+
+		// 渲染所有状态项
+		config.items.forEach(item => {
+			// 创建标签
+			contentEl.createEl('span', { text: `• ${item.label}: ` });
+
+			// 根据类型渲染内容
+			let contentElement: HTMLElement;
+			switch (item.type) {
+				case 'code':
+					contentElement = contentEl.createEl('code', { text: item.content });
+					break;
+				case 'status':
+					contentElement = contentEl.createEl('span');
+					contentElement.textContent = item.content;
+					if (item.color) {
+						(contentElement as HTMLElement).style.color = item.color;
+					}
+					break;
+				default:
+					contentElement = contentEl.createEl('span', { text: item.content });
+			}
+
+			contentEl.createEl('br');
+		});
+
+		// 渲染操作按钮
+		if (config.actions && config.actions.length > 0) {
+			config.actions.forEach(action => {
+				const button = contentEl.createEl('button', {
+					text: action.text,
+					type: 'button',
+					cls: action.cls || 'mod-cta'
+				});
+				button.onclick = action.onClick;
+			});
+		}
+
+		return statusEl;
 	}
 
 	/**
@@ -1133,29 +1370,24 @@ class FastTemplaterSettingTab extends PluginSettingTab {
 	 */
 	private renderTemplaterStatus(containerEl: HTMLElement): HTMLElement {
 		const statusInfo = this.getTemplaterStatusInfo();
-		const statusEl = containerEl.createEl('div', { cls: 'setting-item-description' });
 
-		// 创建状态内容容器
-		const contentEl = statusEl.createEl('small');
-		contentEl.createEl('span', { text: '🔌 ' });
-		contentEl.createEl('strong', { text: 'Templater 状态：' });
-		contentEl.createEl('br');
-
-		// 状态行
-		const statusLine = contentEl.createEl('span', { text: '• ' });
-		const statusSpan = statusLine.createSpan({
-			text: `${statusInfo.icon} ${statusInfo.text}`
+		return this.renderStatusBlock(containerEl, {
+			icon: '🔌',
+			title: 'Templater 状态',
+			items: [
+				{
+					label: '状态',
+					content: `${statusInfo.icon} ${statusInfo.text}`,
+					type: 'status',
+					color: statusInfo.color
+				},
+				...statusInfo.details.map(detail => ({
+					label: '',
+					content: detail,
+					type: 'text' as const
+				}))
+			]
 		});
-		statusSpan.style.color = statusInfo.color;
-		contentEl.createEl('br');
-
-		// 详细信息
-		statusInfo.details.forEach(detail => {
-			contentEl.createEl('span', { text: `• ${detail}` });
-			contentEl.createEl('br');
-		});
-
-		return statusEl;
 	}
 
 	/**
@@ -1163,34 +1395,37 @@ class FastTemplaterSettingTab extends PluginSettingTab {
 	 */
 	private renderTemplateStatus(containerEl: HTMLElement): HTMLElement {
 		const statusInfo = this.getTemplateStatusInfo();
-		const statusEl = containerEl.createEl('div', { cls: 'setting-item-description' });
 
-		// 创建状态内容容器
-		const contentEl = statusEl.createEl('small');
-		contentEl.createEl('span', { text: '📋 ' });
-		contentEl.createEl('strong', { text: '模板状态：' });
-		contentEl.createEl('br');
-
-		// 当前路径
-		contentEl.createEl('span', { text: '• 当前路径: ' });
-		contentEl.createEl('code', { text: statusInfo.folderPath });
-		contentEl.createEl('br');
-
-		// 状态行
-		const statusLine = contentEl.createEl('span', { text: '• 状态: ' });
-		const statusSpan = statusLine.createSpan({
-			text: `${statusInfo.icon} ${statusInfo.text}`
+		// 使用统一的状态块渲染函数
+		const statusEl = this.renderStatusBlock(containerEl, {
+			icon: '📋',
+			title: '模板状态',
+			items: [
+				{
+					label: '当前路径',
+					content: statusInfo.folderPath,
+					type: 'code'
+				},
+				{
+					label: '状态',
+					content: `${statusInfo.icon} ${statusInfo.text}`,
+					type: 'status',
+					color: statusInfo.color
+				}
+			],
+			// 不在这里设置事件，在后面单独处理
+			actions: statusInfo.showReloadButton ? [
+				{
+					text: '重新扫描模板',
+					onClick: () => {}, // 占位，实际事件在下面设置
+					cls: 'mod-cta'
+				}
+			] : undefined
 		});
-		statusSpan.style.color = statusInfo.color;
-		contentEl.createEl('br');
 
-		// 重新扫描按钮
+		// 单独设置按钮事件处理
 		if (statusInfo.showReloadButton) {
-			const reloadBtn = contentEl.createEl('button', {
-				text: '重新扫描模板',
-				type: 'button',
-				cls: 'mod-cta'
-			});
+			const reloadBtn = statusEl.querySelector('button') as HTMLButtonElement;
 			this.attachReloadButtonHandler(reloadBtn, statusEl);
 		}
 
@@ -1209,19 +1444,14 @@ class FastTemplaterSettingTab extends PluginSettingTab {
 			button.textContent = '扫描中...';
 			button.disabled = true;
 
-			// 调用插件的重新加载方法
-			const result = await this.plugin.reloadTemplates();
+			// 调用插件的重新加载方法并启用通知
+			const result = await this.plugin.reloadTemplates(true);
 
 			// 重新渲染状态显示
-			statusEl.empty();
-			const newStatusEl = this.renderTemplateStatus(statusEl.parentElement!);
-			statusEl.replaceWith(newStatusEl);
-
-			// 根据加载结果显示用户通知
-			if (result.status === 'success') {
-				new Notice(`✅ ${result.message}`);
-			} else {
-				new Notice(`⚠️ ${result.message}`);
+			const parentEl = statusEl.parentElement;
+			if (parentEl) {
+				const newStatusEl = this.renderTemplateStatus(parentEl);
+				statusEl.replaceWith(newStatusEl);
 			}
 		};
 	}
@@ -1259,6 +1489,13 @@ class FastTemplaterSettingTab extends PluginSettingTab {
 
 		containerEl.createEl('h2', {text: 'Fast Templater 设置'});
 
+		// 添加版本信息
+		const versionInfo = containerEl.createEl('div', {cls: 'setting-item-description'});
+		versionInfo.createEl('small', {text: '📋 Fast Templater v1.0.0 - 可视化模板插件，帮助您通过可视化界面插入模板片段。'});
+
+		// 添加分隔线
+		containerEl.createEl('hr', {cls: 'setting-item-hr'});
+
 		new Setting(containerEl)
 			.setName('模板文件夹路径')
 			.setDesc('输入存放模板文件的文件夹路径，插件将在此路径下查找模板文件')
@@ -1278,12 +1515,22 @@ class FastTemplaterSettingTab extends PluginSettingTab {
 				});
 
 				verifyButton.onclick = async () => {
+					// 立即获取输入框的当前值，确保验证的是最新的路径
 					const currentPath = setting.getValue();
-					const isValid = await this.plugin.validateTemplatePath(currentPath);
+					const cleanPath = currentPath.trim().replace(/^\/+|\/+$/g, '');
+
+					// 立即保存当前路径值到插件设置中，确保验证和保存的一致性
+					if (cleanPath !== this.plugin.settings.templateFolderPath) {
+						this.plugin.settings.templateFolderPath = cleanPath;
+						await this.plugin.saveSettings();
+					}
+
+					// 验证保存后的路径
+					const isValid = await this.plugin.validateTemplatePath(cleanPath);
 					if (isValid) {
-						new Notice(`✅ 路径 "${currentPath}" 有效，已找到模板文件`);
+						new Notice(`✅ 路径 "${cleanPath}" 有效，已找到模板文件`);
 					} else {
-						new Notice(`⚠️ 路径 "${currentPath}" 未找到模板文件`);
+						new Notice(`⚠️ 路径 "${cleanPath}" 未找到模板文件`);
 					}
 				};
 
@@ -1294,7 +1541,7 @@ class FastTemplaterSettingTab extends PluginSettingTab {
 					this.plugin.settings.templateFolderPath = cleanPath;
 					await this.plugin.saveSettings();
 
-					// 提供用户反馈
+					// 提供用户反馈（只在路径确实发生变化时）
 					if (cleanPath && cleanPath !== oldPath) {
 						new Notice(`模板路径已更新为: ${cleanPath}`);
 					}
@@ -1323,6 +1570,19 @@ class FastTemplaterSettingTab extends PluginSettingTab {
 
 		// 初始显示 Templater 状态
 		templaterStatusEl = this.renderTemplaterStatus(containerEl);
+
+		// 智能 Frontmatter 合并设置
+		new Setting(containerEl)
+			.setName('启用智能 Frontmatter 合并')
+			.setDesc('启用后，插入模板时会自动合并模板与笔记的 frontmatter。模板中的字段会覆盖笔记中的同名字段，tags 字段会智能合并去重。需要安装 js-yaml 库。')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.enableFrontmatterMerge)
+				.onChange(async (value) => {
+					this.plugin.settings.enableFrontmatterMerge = value;
+					await this.plugin.saveSettings();
+					new Notice(value ? '已启用智能 Frontmatter 合并' : '已禁用智能 Frontmatter 合并');
+				})
+			);
 
 		// 初始显示模板状态
 		this.renderTemplateStatus(containerEl);
