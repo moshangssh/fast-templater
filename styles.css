@@ -382,11 +382,6 @@ If your plugin does not need CSS, delete this file.
 	background: linear-gradient(90deg, var(--text-on-accent), var(--interactive-accent-hover));
 }
 
-.fast-templater-template-item.fast-templater-template-item-selected .fast-templater-template-name {
-	color: var(--text-on-accent);
-	font-weight: 600;
-	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
 
 .fast-templater-template-name {
 	font-weight: 500;
@@ -619,5 +614,281 @@ If your plugin does not need CSS, delete this file.
 	.fast-templater-preview-title {
 		font-size: 15px;
 		margin-bottom: 10px;
+	}
+}
+
+/* Frontmatter 预设管理样式 */
+
+/* 预设管理容器 */
+.fast-templater-preset-actions {
+	margin: 16px 0;
+	display: flex;
+	justify-content: flex-start;
+}
+
+.fast-templater-preset-actions button {
+	padding: 8px 16px;
+	border-radius: 6px;
+	border: 1px solid var(--interactive-accent);
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 500;
+	transition: all 0.2s ease;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.fast-templater-preset-actions button:hover {
+	background-color: var(--interactive-accent-hover);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(var(--interactive-accent-rgb), 0.3);
+}
+
+.fast-templater-preset-actions button:active {
+	transform: translateY(0);
+	box-shadow: 0 1px 4px rgba(var(--interactive-accent-rgb), 0.2);
+}
+
+/* 预设列表容器 */
+.fast-templater-presets-list {
+	margin-top: 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background-color: var(--background-primary);
+	overflow: hidden;
+}
+
+/* 空状态样式 */
+.fast-templater-empty-presets {
+	padding: 32px 24px;
+	text-align: center;
+	background-color: var(--background-secondary);
+	border: 2px dashed var(--background-modifier-border);
+	border-radius: 8px;
+	margin: 12px 0;
+}
+
+.fast-templater-empty-presets p {
+	margin: 0;
+	color: var(--text-muted);
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+/* 预设项样式 */
+.fast-templater-preset-item {
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+	transition: all 0.2s ease;
+	position: relative;
+}
+
+.fast-templater-preset-item:last-child {
+	border-bottom: none;
+}
+
+.fast-templater-preset-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* 预设名称容器 */
+.fast-templater-preset-name {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 8px;
+}
+
+.fast-templater-preset-name-input {
+	flex: 1;
+	padding: 8px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-size: 14px;
+	font-weight: 500;
+	outline: none;
+	transition: all 0.2s ease;
+}
+
+.fast-templater-preset-name-input:focus {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+	background-color: var(--background-primary-alt, var(--background-secondary));
+}
+
+.fast-templater-preset-name-input:hover {
+	border-color: var(--interactive-accent);
+}
+
+/* 删除按钮样式 */
+.fast-templater-preset-item button.mod-warning {
+	padding: 6px 12px;
+	border-radius: 6px;
+	border: 1px solid var(--color-red);
+	background-color: var(--color-red);
+	color: var(--text-on-accent);
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 500;
+	transition: all 0.2s ease;
+	white-space: nowrap;
+}
+
+.fast-templater-preset-item button.mod-warning:hover {
+	background-color: var(--color-red-hover, var(--color-red));
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(var(--color-red-rgb), 0.3);
+}
+
+.fast-templater-preset-item button.mod-warning:active {
+	transform: translateY(0);
+	box-shadow: 0 1px 4px rgba(var(--color-red-rgb), 0.2);
+}
+
+/* 预设信息样式 */
+.fast-templater-preset-info {
+	margin-top: 8px;
+}
+
+.fast-templater-preset-info small {
+	font-size: 12px;
+	color: var(--text-muted);
+	line-height: 1.4;
+}
+
+/* 主题特定优化 */
+.theme-dark .fast-templater-preset-item {
+	background-color: var(--background-secondary);
+	border-bottom-color: var(--background-modifier-border-2);
+}
+
+.theme-dark .fast-templater-preset-name-input {
+	background-color: var(--background-secondary);
+	border-color: var(--background-modifier-border-2);
+}
+
+.theme-dark .fast-templater-preset-name-input:focus {
+	background-color: var(--background-primary);
+}
+
+.theme-light .fast-templater-preset-item {
+	background-color: var(--background-primary-alt);
+}
+
+.theme-light .fast-templater-preset-name-input {
+	background-color: var(--background-primary-alt);
+}
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+	.fast-templater-preset-actions {
+		margin: 12px 0;
+		justify-content: stretch;
+	}
+
+	.fast-templater-preset-actions button {
+		width: 100%;
+		justify-content: center;
+		padding: 12px 20px;
+		font-size: 16px;
+		border-radius: 8px;
+		min-height: 48px;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.fast-templater-presets-list {
+		margin-top: 12px;
+		border-radius: 8px;
+	}
+
+	.fast-templater-empty-presets {
+		padding: 24px 16px;
+		margin: 8px 0;
+		border-radius: 8px;
+	}
+
+	.fast-templater-empty-presets p {
+		font-size: 15px;
+		line-height: 1.6;
+	}
+
+	.fast-templater-preset-item {
+		padding: 16px;
+		border-bottom-width: 1px;
+	}
+
+	.fast-templater-preset-name {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 8px;
+		margin-bottom: 12px;
+	}
+
+	.fast-templater-preset-name-input {
+		padding: 12px 16px;
+		font-size: 16px;
+		border-radius: 8px;
+		min-height: 48px;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.fast-templater-preset-item button.mod-warning {
+		padding: 12px 16px;
+		font-size: 14px;
+		border-radius: 8px;
+		min-height: 44px;
+		align-self: flex-start;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.fast-templater-preset-info small {
+		font-size: 13px;
+		line-height: 1.5;
+	}
+}
+
+@media (max-width: 480px) {
+	.fast-templater-preset-actions {
+		margin: 8px 0;
+	}
+
+	.fast-templater-preset-actions button {
+		padding: 14px 20px;
+		font-size: 16px;
+		min-height: 52px;
+	}
+
+	.fast-templater-presets-list {
+		margin-top: 8px;
+		border-radius: 8px;
+	}
+
+	.fast-templater-empty-presets {
+		padding: 20px 12px;
+		margin: 6px 0;
+	}
+
+	.fast-templater-preset-item {
+		padding: 14px 12px;
+	}
+
+	.fast-templater-preset-name {
+		margin-bottom: 10px;
+	}
+
+	.fast-templater-preset-name-input {
+		padding: 14px 16px;
+		min-height: 52px;
+	}
+
+	.fast-templater-preset-item button.mod-warning {
+		padding: 14px 16px;
+		min-height: 48px;
 	}
 }
