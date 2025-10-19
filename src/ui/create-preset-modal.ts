@@ -1,0 +1,165 @@
+import { App, Modal, Notice } from 'obsidian';
+import { PresetManager } from '@presets';
+export class CreatePresetModal extends Modal {
+	private readonly presetManager: PresetManager;
+	private nameInput: HTMLInputElement;
+	private validationMessage: HTMLElement | null = null;
+	private submitButton: HTMLButtonElement;
+	private readonly onPresetsChanged?: () => void;
+
+	constructor(
+		app: App,
+		presetManager: PresetManager,
+		onPresetsChanged?: () => void,
+	) {
+		super(app);
+		this.presetManager = presetManager;
+		this.onPresetsChanged = onPresetsChanged;
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+
+		// 设置模态窗口大小
+		this.modalEl.style.width = '60vw';
+		this.modalEl.style.maxWidth = '500px';
+		this.modalEl.style.height = 'auto';
+
+		// 创建标题
+		contentEl.createEl('h2', { text: '创建新的预设配置' });
+
+		// 创建说明文字
+		const descEl = contentEl.createDiv('setting-item-description');
+		descEl.createEl('small', {
+			text: '预设配置用于管理模板中引用的 Frontmatter 字段。每个配置包含一组可重用的字段定义。'
+		});
+
+		// 创建表单容器
+		const formContainer = contentEl.createDiv('fast-templater-create-preset-form');
+
+		// 预设名称输入框
+		const nameContainer = formContainer.createDiv('fast-templater-form-group');
+		nameContainer.createEl('label', { text: '预设名称 *' });
+		nameContainer.createEl('small', {
+			text: '用于在设置界面中显示的友好名称，系统会基于此自动生成引用ID'
+		});
+		this.nameInput = nameContainer.createEl('input', {
+			type: 'text',
+			placeholder: '例如: 项目模板配置',
+			cls: 'fast-templater-form-input'
+		});
+
+		// 验证消息容器
+		this.validationMessage = formContainer.createDiv('fast-templater-validation-message');
+
+		// 操作按钮容器
+		const actionsContainer = contentEl.createDiv('fast-templater-form-actions');
+
+		// 取消按钮
+		const cancelBtn = actionsContainer.createEl('button', {
+			text: '❌ 取消',
+			cls: ''
+		});
+		cancelBtn.onclick = () => this.close();
+
+		// 按钮分隔
+		actionsContainer.createEl('span', { text: ' | ' });
+
+		// 创建按钮
+		this.submitButton = actionsContainer.createEl('button', {
+			text: '✅ 创建预设',
+			cls: 'mod-cta'
+		});
+		this.submitButton.onclick = () => this.handleCreate();
+		this.submitButton.disabled = true; // 初始禁用
+
+		// 添加输入事件监听器
+		this.nameInput.addEventListener('input', this.handleInputChange);
+
+		// 聚焦到名称输入框
+		setTimeout(() => this.nameInput.focus(), 100);
+	}
+
+	/**
+	 * 处理输入变化事件
+	 */
+	private handleInputChange = () => {
+		const nameValue = this.nameInput.value.trim();
+
+		if (!nameValue) {
+			this.updateValidationMessage('', null);
+			this.submitButton.disabled = true;
+			return;
+		}
+
+		const generatedId = this.presetManager.generateUniquePresetId(nameValue);
+
+		// 更新验证消息
+		this.updateValidationMessage(nameValue, generatedId);
+
+		// 启用创建按钮
+		this.submitButton.disabled = false;
+	}
+
+	/**
+	 * 更新验证消息显示
+	 */
+	private updateValidationMessage(nameValue: string, generatedId: string | null) {
+		if (!this.validationMessage) return;
+
+		this.validationMessage.empty();
+
+		// 检查名称
+		if (!nameValue) {
+			this.validationMessage.createEl('p', {
+				text: '⚠️ 预设名称不能为空',
+				cls: 'fast-templater-validation-error'
+			});
+			return;
+		}
+
+		const message = this.validationMessage.createEl('p', {
+			cls: 'fast-templater-validation-success'
+		});
+
+		message.appendText('✅ 将自动生成引用ID：');
+
+		if (generatedId) {
+			message.createEl('code', { text: generatedId });
+		} else {
+			message.appendText('生成失败');
+		}
+	}
+
+	/**
+	 * 处理创建预设
+	 */
+	private async handleCreate(): Promise<void> {
+		const nameValue = this.nameInput.value.trim();
+
+		if (!nameValue) {
+			new Notice('❌ 请修正输入错误后再创建预设');
+			return;
+		}
+
+		try {
+			// 创建新的预设对象
+			const newPreset = await this.presetManager.createPreset({
+				name: nameValue
+			});
+
+			new Notice(`✅ 已创建预设 "${nameValue}" (ID: ${newPreset.id})`);
+			this.close();
+
+			this.onPresetsChanged?.();
+		} catch (error) {
+			console.error('Fast Templater: 创建预设失败', error);
+			new Notice('❌ 创建预设失败');
+		}
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}
