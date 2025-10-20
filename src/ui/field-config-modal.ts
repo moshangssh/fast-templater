@@ -7,6 +7,8 @@ export class FieldConfigModal extends Modal {
 	private preset: FrontmatterPreset;
 	private fields: FrontmatterField[];
 	private readonly onPresetsChanged?: () => void;
+	private draggedIndex: number | null = null;
+	private readonly fieldCollapseStates = new WeakMap<FrontmatterField, boolean>();
 
 	constructor(
 		app: App,
@@ -48,23 +50,27 @@ export class FieldConfigModal extends Modal {
 		// 添加字段按钮
 		const addFieldBtn = actionsContainer.createEl('button', {
 			text: '➕ 添加字段',
-			cls: 'mod-cta'
+			cls: 'mod-cta fast-templater-field-config-actions__btn'
 		});
 		addFieldBtn.onclick = () => this.addNewField(fieldsContainer);
 
 		// 按钮分隔
-		actionsContainer.createEl('span', { text: ' | ' });
+		actionsContainer.createEl('span', {
+			text: ' | ',
+			cls: 'fast-templater-field-config-actions__divider'
+		});
 
 		// 保存按钮
 		const saveBtn = actionsContainer.createEl('button', {
 			text: '💾 保存',
-			cls: 'mod-cta'
+			cls: 'mod-cta fast-templater-field-config-actions__btn'
 		});
 		saveBtn.onclick = () => this.saveAndClose();
 
 		// 取消按钮
 		const cancelBtn = actionsContainer.createEl('button', {
-			text: '❌ 取消'
+			text: '❌ 取消',
+			cls: 'fast-templater-field-config-actions__btn'
 		});
 		cancelBtn.onclick = () => this.close();
 	}
@@ -96,51 +102,183 @@ export class FieldConfigModal extends Modal {
 	 */
 	private renderFieldItem(containerEl: HTMLElement, field: FrontmatterField, index: number): void {
 		const fieldItem = containerEl.createDiv('fast-templater-field-item');
+		fieldItem.dataset.index = index.toString();
+		const isCollapsed = this.isFieldCollapsed(field);
 
-		// 字段头部
+		// 仅通过拖拽手柄触发拖拽，避免影响输入框操作
 		const headerEl = fieldItem.createDiv('fast-templater-field-header');
+		headerEl.addClass('fast-templater-field-header--collapsible');
+		headerEl.setAttr('tabindex', '0');
+		headerEl.setAttr('role', 'button');
+		const headerLeft = headerEl.createDiv('fast-templater-field-header__left');
 
-		// 字段标题
-		headerEl.createEl('h4', { text: `字段 ${index + 1}` });
+		const dragHandle = headerLeft.createSpan({
+			cls: 'fast-templater-field-drag-handle',
+			text: '⠿'
+		});
+		dragHandle.setAttr('draggable', 'true');
+
+		dragHandle.addEventListener('dragstart', event => {
+			this.draggedIndex = index;
+			fieldItem.classList.add('fast-templater-field-item--dragging');
+			event.dataTransfer?.setData('text/plain', String(index));
+			event.dataTransfer && (event.dataTransfer.effectAllowed = 'move');
+		});
+
+		dragHandle.addEventListener('dragend', () => {
+			this.draggedIndex = null;
+			fieldItem.classList.remove('fast-templater-field-item--dragging');
+			this.clearDragStyles(containerEl);
+		});
+
+		fieldItem.addEventListener('dragover', event => {
+			if (this.draggedIndex === null) {
+				return;
+			}
+			event.preventDefault();
+			event.dataTransfer && (event.dataTransfer.dropEffect = 'move');
+
+			const isAfter = this.isDropAfter(event, fieldItem);
+			fieldItem.classList.toggle('fast-templater-field-item--drag-over-before', !isAfter);
+			fieldItem.classList.toggle('fast-templater-field-item--drag-over-after', isAfter);
+		});
+
+		fieldItem.addEventListener('dragleave', () => {
+			fieldItem.classList.remove('fast-templater-field-item--drag-over-before', 'fast-templater-field-item--drag-over-after');
+		});
+
+		fieldItem.addEventListener('drop', event => {
+			if (this.draggedIndex === null) {
+				return;
+			}
+			event.preventDefault();
+			const targetIndex = Number(fieldItem.dataset.index);
+			if (Number.isNaN(targetIndex)) {
+				return;
+			}
+
+			const isAfter = this.isDropAfter(event, fieldItem);
+			this.handleReorder(this.draggedIndex, targetIndex, isAfter, containerEl);
+		});
+
+		// 字段头部标题
+		headerLeft.createEl('h4', { text: `字段 ${index + 1}` });
+
+		const summaryEl = headerLeft.createSpan({
+			cls: 'fast-templater-field-header__summary'
+		});
+		const updateSummary = () => {
+			const summaryParts: string[] = [];
+			if (field.label?.trim()) {
+				summaryParts.push(`显示名称: ${field.label}`);
+			}
+			if (field.key?.trim()) {
+				summaryParts.push(`键名: ${field.key}`);
+			}
+			if (summaryParts.length === 0) {
+				summaryEl.empty();
+				return;
+			}
+			summaryEl.setText(summaryParts.join(' | '));
+		};
+		updateSummary();
+
+		const headerActions = headerEl.createDiv('fast-templater-field-header__actions');
 
 		// 删除字段按钮
-		const deleteBtn = headerEl.createEl('button', {
+		const deleteBtn = headerActions.createEl('button', {
 			text: '🗑️ 删除',
 			cls: 'mod-warning'
 		});
-		deleteBtn.onclick = () => this.removeField(index, containerEl);
+		deleteBtn.onclick = event => {
+			event.stopPropagation();
+			this.removeField(index, containerEl);
+		};
 
 		// 字段配置容器
 		const configContainer = fieldItem.createDiv('fast-templater-field-config');
+		const applyCollapseState = (collapsed: boolean) => {
+			this.fieldCollapseStates.set(field, collapsed);
+			fieldItem.classList.toggle('fast-templater-field-item--collapsed', collapsed);
+			configContainer.classList.toggle('fast-templater-field-config--collapsed', collapsed);
+			headerEl.setAttr('aria-expanded', (!collapsed).toString());
+			headerEl.classList.toggle('fast-templater-field-header--collapsed', collapsed);
+		};
+		applyCollapseState(isCollapsed);
+
+		const shouldIgnoreToggle = (target: HTMLElement | null) => {
+			if (!target) {
+				return false;
+			}
+			return Boolean(
+				target.closest('.fast-templater-field-header__actions') ||
+				target.closest('.fast-templater-field-drag-handle')
+			);
+		};
+
+		const toggleCollapse = () => {
+			const nextState = !this.isFieldCollapsed(field);
+			applyCollapseState(nextState);
+		};
+
+		headerEl.addEventListener('click', event => {
+			const target = event.target as HTMLElement | null;
+			if (shouldIgnoreToggle(target)) {
+				return;
+			}
+			toggleCollapse();
+		});
+
+		headerEl.addEventListener('keydown', event => {
+			if (event.key === 'Enter' || event.key === ' ') {
+				event.preventDefault();
+				toggleCollapse();
+			}
+		});
 
 		// Key 输入框
 		const keyContainer = configContainer.createDiv('fast-templater-field-row');
-		keyContainer.createEl('label', { text: 'Frontmatter 键名: *' });
+		keyContainer.createEl('label', {
+			text: 'Frontmatter 键名: *',
+			cls: 'fast-templater-field-label'
+		});
 		const keyInput = keyContainer.createEl('input', {
 			type: 'text',
 			value: field.key,
-			placeholder: '例如: status, category, priority'
+			placeholder: '例如: status, category, priority',
+			cls: 'fast-templater-field-input'
 		});
 		keyInput.addEventListener('input', () => {
 			field.key = keyInput.value.trim();
+			updateSummary();
 		});
 
 		// Label 输入框
 		const labelContainer = configContainer.createDiv('fast-templater-field-row');
-		labelContainer.createEl('label', { text: '显示名称: *' });
+		labelContainer.createEl('label', {
+			text: '显示名称: *',
+			cls: 'fast-templater-field-label'
+		});
 		const labelInput = labelContainer.createEl('input', {
 			type: 'text',
 			value: field.label,
-			placeholder: '例如: 状态, 分类, 优先级'
+			placeholder: '例如: 状态, 分类, 优先级',
+			cls: 'fast-templater-field-input'
 		});
 		labelInput.addEventListener('input', () => {
 			field.label = labelInput.value.trim();
+			updateSummary();
 		});
 
 		// Type 选择框
 		const typeContainer = configContainer.createDiv('fast-templater-field-row');
-		typeContainer.createEl('label', { text: '字段类型: *' });
-		const typeSelect = typeContainer.createEl('select');
+		typeContainer.createEl('label', {
+			text: '字段类型: *',
+			cls: 'fast-templater-field-label'
+		});
+		const typeSelect = typeContainer.createEl('select', {
+			cls: 'fast-templater-field-input fast-templater-field-select'
+		});
 		const types = ['text', 'select', 'date', 'multi-select'];
 		types.forEach(type => {
 			const option = typeSelect.createEl('option', {
@@ -163,11 +301,15 @@ export class FieldConfigModal extends Modal {
 
 		// Default 输入框
 		const defaultContainer = configContainer.createDiv('fast-templater-field-row');
-		defaultContainer.createEl('label', { text: '默认值:' });
+		defaultContainer.createEl('label', {
+			text: '默认值:',
+			cls: 'fast-templater-field-label'
+		});
 		const defaultInput = defaultContainer.createEl('input', {
 			type: 'text',
 			value: field.default,
-			placeholder: '默认值或 Templater 宏（可选）'
+			placeholder: '默认值或 Templater 宏（可选）',
+			cls: 'fast-templater-field-input'
 		});
 		defaultInput.addEventListener('input', () => {
 			field.default = defaultInput.value;
@@ -175,8 +317,11 @@ export class FieldConfigModal extends Modal {
 
 		// Options 配置（仅当类型为 select 或 multi-select 时显示）
 		if (field.type === 'select' || field.type === 'multi-select') {
-			const optionsContainer = configContainer.createDiv('fast-templater-field-row');
-			optionsContainer.createEl('label', { text: '选项列表:' });
+			const optionsContainer = configContainer.createDiv('fast-templater-field-row fast-templater-field-row--stacked');
+			optionsContainer.createEl('label', {
+				text: '选项列表:',
+				cls: 'fast-templater-field-label'
+			});
 
 			const optionsListContainer = optionsContainer.createDiv('fast-templater-options-list');
 			this.renderOptionsList(optionsListContainer, field, index);
@@ -184,10 +329,71 @@ export class FieldConfigModal extends Modal {
 			// 添加选项按钮
 			const addOptionBtn = optionsContainer.createEl('button', {
 				text: '➕ 添加选项',
-				cls: 'mod-small'
+				cls: 'mod-small fast-templater-field-options__btn'
 			});
 			addOptionBtn.onclick = () => this.addOption(field, optionsListContainer, index);
 		}
+	}
+
+	/**
+	 * 判断拖拽位置是否在目标元素下半部，用于决定插入位置
+	 */
+	private isDropAfter(event: DragEvent, targetEl: HTMLElement): boolean {
+		const rect = targetEl.getBoundingClientRect();
+		const offsetY = event.clientY - rect.top;
+		return offsetY > rect.height / 2;
+	}
+
+	/**
+	 * 清理拖拽样式
+	 */
+	private clearDragStyles(containerEl: HTMLElement): void {
+		containerEl.querySelectorAll('.fast-templater-field-item').forEach(el => {
+			el.classList.remove(
+				'fast-templater-field-item--drag-over-before',
+				'fast-templater-field-item--drag-over-after',
+				'fast-templater-field-item--dragging'
+			);
+		});
+	}
+
+	/**
+	 * 处理字段重新排序
+	 */
+	private handleReorder(fromIndex: number, targetIndex: number, isAfter: boolean, containerEl: HTMLElement): void {
+		if (fromIndex === targetIndex && !isAfter) {
+			this.clearDragStyles(containerEl);
+			return;
+		}
+
+		const [movedField] = this.fields.splice(fromIndex, 1);
+		let insertIndex = targetIndex;
+
+		if (fromIndex < targetIndex) {
+			insertIndex -= 1;
+		}
+		if (isAfter) {
+			insertIndex += 1;
+		}
+
+		if (insertIndex < 0) {
+			insertIndex = 0;
+		}
+		if (insertIndex > this.fields.length) {
+			insertIndex = this.fields.length;
+		}
+
+		this.fields.splice(insertIndex, 0, movedField);
+		this.draggedIndex = null;
+		this.clearDragStyles(containerEl);
+		this.renderFieldsList(containerEl);
+	}
+
+	/**
+	 * 判断字段是否折叠
+	 */
+	private isFieldCollapsed(field: FrontmatterField): boolean {
+		return this.fieldCollapseStates.get(field) ?? false;
 	}
 
 	/**
@@ -210,7 +416,8 @@ export class FieldConfigModal extends Modal {
 			const optionInput = optionItem.createEl('input', {
 				type: 'text',
 				value: option,
-				placeholder: '选项值'
+				placeholder: '选项值',
+				cls: 'fast-templater-field-input'
 			});
 			optionInput.addEventListener('input', () => {
 				if (field.options) {
@@ -220,7 +427,7 @@ export class FieldConfigModal extends Modal {
 
 			const removeOptionBtn = optionItem.createEl('button', {
 				text: '🗑️',
-				cls: 'mod-small mod-warning'
+				cls: 'mod-small mod-warning fast-templater-field-options__remove'
 			});
 			removeOptionBtn.onclick = () => this.removeOption(field, optionIndex, fieldIndex);
 		});
@@ -258,7 +465,10 @@ export class FieldConfigModal extends Modal {
 	 * 删除字段
 	 */
 	private removeField(index: number, containerEl: HTMLElement): void {
-		this.fields.splice(index, 1);
+		const [removedField] = this.fields.splice(index, 1);
+		if (removedField) {
+			this.fieldCollapseStates.delete(removedField);
+		}
 		this.renderFieldsList(containerEl);
 	}
 

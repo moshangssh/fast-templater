@@ -86,7 +86,7 @@ export class SettingsManager {
 			return [];
 		}
 
-		return presets
+		const normalizedPresets = presets
 			.filter((preset) => {
 				return Boolean(
 					preset &&
@@ -100,6 +100,8 @@ export class SettingsManager {
 				...preset,
 				fields: this.sanitizeFrontmatterFields(preset.fields),
 			}));
+		// 允许创建后再配置字段，因此不再过滤空字段预设
+		return normalizedPresets;
 	}
 
 	private sanitizeFrontmatterFields(fields: FrontmatterField[]): FrontmatterField[] {

@@ -1,6 +1,50 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "paths": {
+      "@core": [
+        "src/core"
+      ],
+      "@core/*": [
+        "src/core/*"
+      ],
+      "@engine": [
+        "src/engine"
+      ],
+      "@engine/*": [
+        "src/engine/*"
+      ],
+      "@presets": [
+        "src/presets"
+      ],
+      "@presets/*": [
+        "src/presets/*"
+      ],
+      "@settings": [
+        "src/settings"
+      ],
+      "@settings/*": [
+        "src/settings/*"
+      ],
+      "@templates": [
+        "src/templates"
+      ],
+      "@templates/*": [
+        "src/templates/*"
+      ],
+      "@types": [
+        "src/types"
+      ],
+      "@types/*": [
+        "src/types/*"
+      ],
+      "@ui": [
+        "src/ui"
+      ],
+      "@ui/*": [
+        "src/ui/*"
+      ]
+    },
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",

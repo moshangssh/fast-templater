@@ -1,4 +1,4 @@
-import { Notice, type App, TFile, TFolder, type TAbstractFile } from "obsidian";
+import { Notice, type App, TFile } from "obsidian";
 import type { FastTemplaterSettings, Template, TemplateLoadResult } from "@types";
 import { TemplateLoadStatus } from "@types";
 
@@ -79,7 +79,7 @@ export class TemplateManager {
 
 			const normalizedPath = this.normalizePath(folderPath);
 			const folder = this.app.vault.getAbstractFileByPath(normalizedPath);
-			if (!folder || !(folder instanceof TFolder)) {
+			if (!folder || !("children" in folder)) {
 				this.loadResult = {
 					status: TemplateLoadStatus.ERROR,
 					count: 0,
@@ -89,23 +89,9 @@ export class TemplateManager {
 				return this.loadResult;
 			}
 
-			const templateFiles: TFile[] = [];
-			const visit = (node: TAbstractFile): void => {
-				if (node instanceof TFile) {
-					if (node.extension === "md") {
-						templateFiles.push(node);
-					}
-					return;
-				}
-
-				if (node instanceof TFolder) {
-					for (const child of node.children) {
-						visit(child);
-					}
-				}
-			};
-
-			visit(folder);
+			const templateFiles = this.app.vault.getFiles().filter((file: TFile) => {
+				return file.extension === "md" && file.path.startsWith(`${normalizedPath}/`);
+			});
 
 			this.templates = [];
 			let errorCount = 0;

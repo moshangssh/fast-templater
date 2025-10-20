@@ -167,9 +167,7 @@ If your plugin does not need CSS, delete this file.
 	white-space: pre-wrap;
 }
 
-.fast-templater-preview-markdown {
-	/* 继承Obsidian的默认Markdown样式 */
-}
+/* 继承Obsidian的默认Markdown样式 */
 
 .fast-templater-modal-container {
 	flex: 1;
@@ -396,6 +394,349 @@ If your plugin does not need CSS, delete this file.
 .fast-templater-template-item:active {
 	transform: translateY(0);
 	box-shadow: 0 1px 4px rgba(var(--interactive-accent-rgb), 0.2);
+}
+
+/* 设置页状态块样式 */
+.fast-templater-status-block {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 16px 20px;
+	margin: 16px 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	background-color: var(--background-primary-alt, var(--background-secondary));
+	box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+}
+
+.fast-templater-status-block__header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	padding-bottom: 8px;
+}
+
+.fast-templater-status-block__icon {
+	font-size: 20px;
+	line-height: 1;
+}
+
+.fast-templater-status-block__title {
+	font-weight: 600;
+	color: var(--text-normal);
+	font-size: 15px;
+}
+
+.fast-templater-status-block__items {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.fast-templater-status-block__item {
+	display: grid;
+	grid-template-columns: minmax(120px, 0.35fr) 1fr;
+	gap: 12px;
+	align-items: start;
+}
+
+.fast-templater-status-block__item--note {
+	grid-template-columns: 1fr;
+}
+
+.fast-templater-status-block__item-label {
+	font-size: 13px;
+	color: var(--text-muted);
+	font-weight: 500;
+	text-transform: none;
+}
+
+.fast-templater-status-block__item-content {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	font-size: 13px;
+	color: var(--text-normal);
+}
+
+.fast-templater-status-block__value {
+	line-height: 1.4;
+}
+
+.fast-templater-status-block__status {
+	font-weight: 600;
+}
+
+.fast-templater-status-block__actions {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+	padding-top: 4px;
+}
+
+.fast-templater-status-block__actions button {
+	min-width: 120px;
+}
+
+.theme-dark .fast-templater-status-block {
+	background-color: var(--background-secondary);
+	box-shadow: 0 3px 12px rgba(0, 0, 0, 0.24);
+}
+
+.theme-light .fast-templater-status-block {
+	background-color: var(--background-primary-alt);
+}
+
+@media (max-width: 700px) {
+	.fast-templater-status-block__item {
+		grid-template-columns: 1fr;
+		gap: 4px;
+	}
+}
+
+/* 字段配置模态样式 */
+.fast-templater-field-config-container {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+	padding-bottom: 12px;
+}
+
+.fast-templater-fields-list {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	max-height: calc(70vh - 140px);
+	overflow-y: auto;
+	padding-right: 4px;
+}
+
+.fast-templater-field-item {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	padding: 16px 20px;
+	background-color: var(--background-primary);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.fast-templater-field-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+
+.fast-templater-field-header__left {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.fast-templater-field-header__actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.fast-templater-field-header__summary {
+	display: block;
+	font-size: 12px;
+	color: var(--text-muted);
+	line-height: 1.4;
+	width: 100%;
+	margin-left: 26px;
+}
+
+.fast-templater-field-header__summary:empty {
+	display: none;
+}
+
+.fast-templater-field-drag-handle {
+	font-size: 18px;
+	cursor: grab;
+	user-select: none;
+	color: var(--text-muted);
+	padding: 2px 4px;
+	border-radius: 6px;
+	transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.fast-templater-field-drag-handle:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.fast-templater-field-drag-handle:active {
+	cursor: grabbing;
+}
+
+.fast-templater-field-item--dragging {
+	opacity: 0.75;
+}
+
+.fast-templater-field-item--drag-over-before,
+.fast-templater-field-item--drag-over-after {
+	border-color: var(--interactive-accent);
+}
+
+.fast-templater-field-item--drag-over-before {
+	box-shadow: 0 -4px 0 var(--interactive-accent);
+}
+
+.fast-templater-field-item--drag-over-after {
+	box-shadow: 0 4px 0 var(--interactive-accent);
+}
+
+.fast-templater-field-item--collapsed {
+	padding-bottom: 12px;
+}
+
+.fast-templater-field-item--collapsed .fast-templater-field-header {
+	margin-bottom: 4px;
+}
+
+.fast-templater-field-header h4 {
+	margin: 0;
+	font-size: 15px;
+	color: var(--text-normal);
+	font-weight: 600;
+}
+
+.fast-templater-field-header--collapsible {
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+.fast-templater-field-header--collapsible:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.fast-templater-field-header--collapsible:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+}
+
+.fast-templater-field-header--collapsed .fast-templater-field-header__summary {
+	color: var(--text-faint);
+}
+
+.fast-templater-field-config {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.fast-templater-field-config.fast-templater-field-config--collapsed {
+	display: none;
+}
+
+.fast-templater-field-row {
+	display: grid;
+	grid-template-columns: 140px 1fr;
+	gap: 12px;
+	align-items: center;
+}
+
+.fast-templater-field-row--stacked {
+	grid-template-columns: 1fr;
+	align-items: flex-start;
+}
+
+.fast-templater-field-label {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: none;
+}
+
+.fast-templater-field-input {
+	width: 100%;
+	padding: 8px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	box-sizing: border-box;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+	line-height: 1.4;
+}
+
+.fast-templater-field-input:focus {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+}
+
+.fast-templater-field-select {
+	padding-right: 32px;
+	min-height: 34px;
+}
+
+.fast-templater-field-select option {
+	white-space: nowrap;
+}
+
+.fast-templater-options-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+}
+
+.fast-templater-option-item {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 8px;
+	align-items: center;
+}
+
+.fast-templater-field-options__btn {
+	align-self: flex-start;
+	margin-top: 8px;
+}
+
+.fast-templater-field-options__remove {
+	padding: 6px 10px;
+}
+
+.fast-templater-field-config-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	flex-wrap: wrap;
+	gap: 12px;
+	border-top: 1px solid var(--background-modifier-border);
+	padding-top: 12px;
+	margin-top: -8px;
+}
+
+.fast-templater-field-config-actions__divider {
+	color: var(--text-muted);
+}
+
+.fast-templater-field-config-actions__btn {
+	min-width: 120px;
+}
+
+.fast-templater-empty-fields {
+	margin: 0;
+	padding: 20px;
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: 8px;
+	background-color: var(--background-primary-alt, var(--background-secondary));
+	text-align: center;
+}
+
+@media (max-width: 700px) {
+	.fast-templater-field-row {
+		grid-template-columns: 1fr;
+	}
+
+	.fast-templater-field-config-actions {
+		justify-content: center;
+	}
 }
 
 /* 主题特定优化 */

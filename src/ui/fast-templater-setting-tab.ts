@@ -52,43 +52,64 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 			cls?: string;
 		}>;
 	}): HTMLElement {
-		const statusEl = containerEl.createEl('div', { cls: 'setting-item-description' });
+		const statusEl = containerEl.createDiv({
+			cls: 'fast-templater-status-block setting-item-description'
+		});
 
-		// 创建状态内容容器
-		const contentEl = statusEl.createEl('small');
-		contentEl.createEl('span', { text: `${config.icon} ` });
-		contentEl.createEl('strong', { text: `${config.title}：` });
-		contentEl.createEl('br');
+		// 标题区域
+		const headerEl = statusEl.createDiv('fast-templater-status-block__header');
+		headerEl.createSpan({
+			cls: 'fast-templater-status-block__icon',
+			text: config.icon
+		});
+		headerEl.createSpan({
+			cls: 'fast-templater-status-block__title',
+			text: config.title
+		});
 
-		// 渲染所有状态项
+		// 状态内容区域
+		const itemsEl = statusEl.createDiv('fast-templater-status-block__items');
 		config.items.forEach(item => {
-			// 创建标签
-			contentEl.createEl('span', { text: `• ${item.label}: ` });
+			const itemEl = itemsEl.createDiv({
+				cls: [
+					'fast-templater-status-block__item',
+					item.label ? '' : 'fast-templater-status-block__item--note'
+				].join(' ').trim()
+			});
 
-			// 根据类型渲染内容
+			if (item.label) {
+				itemEl.createSpan({
+					cls: 'fast-templater-status-block__item-label',
+					text: item.label
+				});
+			}
+
+			const contentWrapper = itemEl.createDiv('fast-templater-status-block__item-content');
 			let contentElement: HTMLElement;
 			switch (item.type) {
 				case 'code':
-					contentElement = contentEl.createEl('code', { text: item.content });
+					contentElement = contentWrapper.createEl('code', { text: item.content });
 					break;
 				case 'status':
-					contentElement = contentEl.createEl('span');
-					contentElement.textContent = item.content;
+					contentElement = contentWrapper.createSpan({
+						text: item.content,
+						cls: 'fast-templater-status-block__status'
+					});
 					if (item.color) {
-						(contentElement as HTMLElement).style.color = item.color;
+						contentElement.style.color = item.color;
 					}
 					break;
 				default:
-					contentElement = contentEl.createEl('span', { text: item.content });
+					contentElement = contentWrapper.createSpan({ text: item.content });
 			}
-
-			contentEl.createEl('br');
+			contentElement.classList.add('fast-templater-status-block__value');
 		});
 
-		// 渲染操作按钮
+		// 操作按钮区域
 		if (config.actions && config.actions.length > 0) {
+			const actionsEl = statusEl.createDiv('fast-templater-status-block__actions');
 			config.actions.forEach(action => {
-				const button = contentEl.createEl('button', {
+				const button = actionsEl.createEl('button', {
 					text: action.text,
 					type: 'button',
 					cls: action.cls || 'mod-cta'
@@ -243,7 +264,7 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 
 		// 单独设置按钮事件处理
 		if (statusInfo.showReloadButton) {
-			const reloadBtn = statusEl.querySelector('button') as HTMLButtonElement;
+			const reloadBtn = statusEl.querySelector('.fast-templater-status-block__actions button') as HTMLButtonElement;
 			this.attachReloadButtonHandler(reloadBtn, statusEl);
 		}
 
