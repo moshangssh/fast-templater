@@ -60,27 +60,44 @@ export async function runTemplater(app: App, template: Template): Promise<string
 			throw new Error('Templater 插件未启用');
 		}
 
-		if (templater.templater && typeof templater.templater.read_and_parse_template === 'function') {
-			const abstractFile = app.vault.getAbstractFileByPath(template.path);
+		if (templater.templater && typeof templater.templater.parse_template === 'function') {
+			const activeFile = app.workspace.getActiveFile();
 
-			if (abstractFile && 'extension' in abstractFile && abstractFile.extension === 'md') {
-				const templateFile = abstractFile;
-				const activeFile = app.workspace.getActiveFile();
+			if (!activeFile) {
+				throw new Error('无法获取当前活动文件');
+			}
 
-				if (!activeFile) {
-					throw new Error('无法获取当前活动文件');
-				}
-
+			// 如果没有路径，说明是直接解析内容字符串（如 frontmatter 默认值）
+			if (!template.path || template.path === '') {
 				const config = {
-					template_file: templateFile,
 					target_file: activeFile,
 					run_mode: TEMPLATER_DYNAMIC_MODE,
 					active_file: activeFile
 				};
 
-				return await templater.templater.read_and_parse_template(config);
+				return await templater.templater.parse_template(config, template.content);
+			}
+
+			// 有路径的情况，使用文件方式解析
+			if (typeof templater.templater.read_and_parse_template === 'function') {
+				const abstractFile = app.vault.getAbstractFileByPath(template.path);
+
+				if (abstractFile && 'extension' in abstractFile && abstractFile.extension === 'md') {
+					const templateFile = abstractFile;
+
+					const config = {
+						template_file: templateFile,
+						target_file: activeFile,
+						run_mode: TEMPLATER_DYNAMIC_MODE,
+						active_file: activeFile
+					};
+
+					return await templater.templater.read_and_parse_template(config);
+				} else {
+					throw new Error('无法获取有效的 TFile 对象');
+				}
 			} else {
-				throw new Error('无法获取有效的 TFile 对象');
+				throw new Error('Templater API 不可用');
 			}
 		} else {
 			throw new Error('Templater API 不可用');
@@ -210,12 +227,12 @@ export async function insertTemplateWithUserInput(
 	let templateBodyInserted = false;
 
 	try {
-		updateNoteFrontmatter(editor, mergedFrontmatter, noteMetadata.position);
-
 		if (trimmedBody) {
 			editor.replaceSelection(templateBody);
 			templateBodyInserted = true;
 		}
+
+		updateNoteFrontmatter(editor, mergedFrontmatter, noteMetadata.position);
 
 		return {
 			usedTemplater,

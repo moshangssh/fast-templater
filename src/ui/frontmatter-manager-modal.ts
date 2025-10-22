@@ -8,64 +8,72 @@ export class FrontmatterManagerModal extends Modal {
 	private template: Template;
 	private preset: FrontmatterPreset;
 	private formData: Record<string, unknown>;
+	private resolvedDefaults: Map<string, string> = new Map();
+	private isResolving = true;
 
 	constructor(app: App, plugin: FastTemplater, template: Template, preset: FrontmatterPreset) {
 		super(app);
 		this.plugin = plugin;
 		this.template = template;
 		this.preset = preset;
-		this.formData = {}; // 初始化表单数据
+		this.formData = {};
 	}
 
 	onOpen() {
 		const { contentEl } = this;
 
 		// 设置模态窗口大小
-		this.modalEl.style.width = '85vw';
-		this.modalEl.style.maxWidth = '700px';
-		this.modalEl.style.height = '80vh';
+		this.modalEl.style.width = '90vw';
+		this.modalEl.style.maxWidth = '650px';
+		this.modalEl.style.height = 'auto';
+		this.modalEl.style.maxHeight = '85vh';
 
 		// 创建标题
-		contentEl.createEl('h2', { text: `配置模板: ${this.template.name}` });
+		contentEl.createEl('h2', {
+			text: `配置模板: ${this.template.name}`,
+			cls: 'fast-templater-form-title'
+		});
 
 		// 创建主容器
 		const mainContainer = contentEl.createDiv('fast-templater-frontmatter-manager-container');
 
-		// 创建说明文字
-		mainContainer.createEl('p', {
+		// 创建说明区域
+		const descriptionContainer = mainContainer.createDiv('fast-templater-form-description');
+		descriptionContainer.createEl('p', {
 			text: `此模板引用了预设 "${this.preset.name}"，请填写以下字段：`,
-			cls: 'setting-item-description'
+			cls: 'fast-templater-form-description-text'
 		});
 
 		// 创建表单容器
 		const formContainer = mainContainer.createDiv('fast-templater-form-container');
-
-		// 渲染表单字段
-		this.renderFormFields(formContainer);
 
 		// 创建操作按钮容器
 		const actionsContainer = mainContainer.createDiv('fast-templater-form-actions');
 
 		// 取消按钮
 		const cancelBtn = actionsContainer.createEl('button', {
-			text: '❌ 取消',
-			cls: 'mod-cta'
+			text: '取消',
+			cls: 'fast-templater-form-btn fast-templater-form-btn--cancel'
 		});
 		cancelBtn.onclick = () => this.handleCancel();
 
-		// 按钮分隔
-		actionsContainer.createEl('span', { text: ' | ' });
-
 		// 确认按钮（暂时禁用，等 Templater 解析完成后启用）
 		const confirmBtn = actionsContainer.createEl('button', {
-			text: '✅ 确认插入',
-			cls: 'mod-cta'
+			text: '确认插入',
+			cls: 'mod-cta fast-templater-form-btn fast-templater-form-btn--confirm'
 		});
 		confirmBtn.disabled = true;
 		confirmBtn.onclick = () => this.handleConfirm();
 
-		// 异步解析 Templater 默认值
+		// 先解析 Templater 默认值，再渲染表单
 		this.parseTemplaterDefaults().then(() => {
+			this.isResolving = false;
+			this.renderFormFields(formContainer);
+			confirmBtn.disabled = false;
+		}).catch((error) => {
+			console.error('Fast Templater: 默认值解析失败', error);
+			this.isResolving = false;
+			this.renderFormFields(formContainer);
 			confirmBtn.disabled = false;
 		});
 	}
@@ -84,6 +92,9 @@ export class FrontmatterManagerModal extends Modal {
 				text: `${field.label}:`,
 				cls: 'fast-templater-form-label'
 			});
+
+			// 获取解析后的默认值
+			const resolvedDefault = this.resolvedDefaults.get(field.key) ?? field.default;
 
 			// 字段输入控件
 			let inputEl: HTMLInputElement | HTMLSelectElement | undefined;
@@ -132,7 +143,9 @@ export class FrontmatterManagerModal extends Modal {
 					const multiSelectContainer = fieldContainer.createDiv('fast-templater-multi-select-container');
 
 					// 初始化多选字段的表单数据
-					this.formData[field.key] = [];
+					if (!this.formData[field.key]) {
+						this.formData[field.key] = [];
+					}
 
 					if (field.options && field.options.length > 0) {
 						field.options.forEach(option => {
@@ -150,7 +163,7 @@ export class FrontmatterManagerModal extends Modal {
 							});
 
 							// 如果选项是默认值，则预选中
-							if (field.default === option) {
+							if (resolvedDefault === option) {
 								checkbox.checked = true;
 							}
 
@@ -179,17 +192,20 @@ export class FrontmatterManagerModal extends Modal {
 
 			// 为有 inputEl 的字段类型添加事件监听器
 			if (inputEl && (field.type === 'text' || field.type === 'date' || field.type === 'select')) {
-				// 初始化表单数据
-				this.formData[field.key] = field.default;
+				// 初始化表单数据（保留已有值或使用解析后的默认值）
+				if (!(field.key in this.formData)) {
+					this.formData[field.key] = resolvedDefault;
+				}
 
 				// 设置初始值
 				if (field.type === 'text' || field.type === 'date') {
-					(inputEl as HTMLInputElement).value = field.default;
+					(inputEl as HTMLInputElement).value = this.formData[field.key] as string || '';
 				} else if (field.type === 'select' && inputEl) {
 					const selectEl = inputEl as HTMLSelectElement;
-					const matchingOption = Array.from(selectEl.options).find(option => option.value === field.default);
+					const currentValue = this.formData[field.key] as string;
+					const matchingOption = Array.from(selectEl.options).find(option => option.value === currentValue);
 					if (matchingOption) {
-						selectEl.value = field.default;
+						selectEl.value = currentValue;
 					}
 				}
 
@@ -212,39 +228,28 @@ export class FrontmatterManagerModal extends Modal {
 	 * 解析 Templater 默认值
 	 */
 	private async parseTemplaterDefaults(): Promise<void> {
-		try {
-			const tempTemplate: Template = {
-				id: 'temp-templater-parsing',
-				name: 'Temp Templater Parsing',
-				path: this.template.path,
-				content: ''
-			};
-
-			for (const field of this.preset.fields) {
-				if (field.default && field.default.includes('<%')) {
-					try {
-						if (this.plugin.settings.enableTemplaterIntegration && TemplateEngine.isTemplaterEnabled(this.app)) {
-							tempTemplate.content = field.default;
-							const parsedValue = await TemplateEngine.runTemplater(this.app, tempTemplate);
-							field.default = parsedValue;
-							this.formData[field.key] = parsedValue;
-						}
-					} catch (error) {
-						console.warn(`Fast Templater: 字段 "${field.label}" 的默认值 Templater 解析失败`, error);
-						new Notice(`⚠️ 字段 "${field.label}" 的默认值解析失败，显示原始宏内容`);
+		for (const field of this.preset.fields) {
+			if (field.default && field.default.includes('<%')) {
+				try {
+					if (this.plugin.settings.enableTemplaterIntegration && TemplateEngine.isTemplaterEnabled(this.app)) {
+						const tempTemplate: Template = {
+							id: 'temp-templater-parsing',
+							name: 'Temp Templater Parsing',
+							path: '',
+							content: field.default
+						};
+						const parsedValue = await TemplateEngine.runTemplater(this.app, tempTemplate);
+						this.resolvedDefaults.set(field.key, parsedValue.trim());
+					} else {
+						this.resolvedDefaults.set(field.key, field.default);
 					}
-				} else {
-					this.formData[field.key] = field.default;
+				} catch (error) {
+					console.warn(`Fast Templater: 字段 "${field.label}" 的默认值 Templater 解析失败`, error);
+					this.resolvedDefaults.set(field.key, field.default);
 				}
+			} else {
+				this.resolvedDefaults.set(field.key, field.default);
 			}
-
-			const formContainer = this.contentEl.querySelector('.fast-templater-form-container') as HTMLElement;
-			if (formContainer) {
-				this.renderFormFields(formContainer);
-			}
-		} catch (error) {
-			console.error('Fast Templater: Templater 默认值解析过程失败', error);
-			new Notice('⚠️ 默认值解析过程中出现错误，将显示原始值');
 		}
 	}
 
@@ -294,7 +299,7 @@ export class FrontmatterManagerModal extends Modal {
 			// Subtask 1.2: 验证表单数据
 			const validation = this.plugin.presetManager.validateFormData(this.preset, this.formData);
 			if (!validation.isValid) {
-				new Notice(`❌ 表单验证失败:\n${validation.errors.join('\n')}`);
+				new Notice(`表单验证失败:\n${validation.errors.join('\n')}`);
 				return;
 			}
 
@@ -312,17 +317,17 @@ export class FrontmatterManagerModal extends Modal {
 
 			// 有 Templater 警告时展示提示
 			if (result.templaterError) {
-				new Notice(`⚠️ ${result.templaterError}，将使用原始模板内容进行插入`);
+				new Notice(`${result.templaterError}，将使用原始模板内容进行插入`);
 			}
 
 			if (result.fallbackToBodyOnly) {
-				new Notice('⚠️ Frontmatter 更新失败，尝试仅插入模板内容');
-				new Notice('✅ 已插入模板内容（Frontmatter 更新失败）');
+				new Notice('Frontmatter 更新失败，尝试仅插入模板内容');
+				new Notice('已插入模板内容（Frontmatter 更新失败）');
 			} else {
 				const templaterInfo = result.usedTemplater ? '并使用 Templater 处理' : '';
 				const mergeInfo = result.mergeCount > 0 ? `已合并 ${result.mergeCount} 个 frontmatter 字段` : '';
 
-				let successMessage = `✅ 模板 "${this.template.name}" 已插入`;
+				let successMessage = `模板 "${this.template.name}" 已插入`;
 				if (templaterInfo || mergeInfo) {
 					successMessage += `（${templaterInfo}${templaterInfo && mergeInfo ? '，' : ''}${mergeInfo}）`;
 				}
@@ -339,14 +344,14 @@ export class FrontmatterManagerModal extends Modal {
 
 			// Task 4: 错误处理机制
 			const errorMessage = error instanceof Error ? error.message : '未知错误';
-			new Notice(`❌ 插入模板失败: ${errorMessage}`);
+			new Notice(`插入模板失败: ${errorMessage}`);
 
 			// Task 4.4: 用户友好的错误通知系统
 			// 提供回退建议
 			if (errorMessage.includes('编辑器')) {
-				new Notice('💡 请确保在 Markdown 文件中使用此功能');
+				new Notice('提示：请确保在 Markdown 文件中使用此功能');
 			} else if (errorMessage.includes('Templater')) {
-				new Notice('💡 可以尝试禁用 Templater 集成后重试');
+				new Notice('提示：可以尝试禁用 Templater 集成后重试');
 			}
 		}
 	}

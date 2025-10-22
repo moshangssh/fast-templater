@@ -188,7 +188,7 @@ export class TemplateSelectorModal extends Modal {
 				const message = this.templateLoadStatus.message || '加载失败';
 				if (message.includes('未设置')) {
 					return {
-						icon: '⚙️',
+						icon: '',
 						title: '模板路径未设置',
 						message: '您需要先设置模板文件夹路径才能使用此功能。',
 						actions: [
@@ -198,7 +198,7 @@ export class TemplateSelectorModal extends Modal {
 					};
 				} else if (message.includes('无效或不存在')) {
 					return {
-						icon: '📂',
+						icon: '',
 						title: '模板文件夹不存在',
 						message: '指定的模板文件夹路径无效或不存在，请检查路径设置。',
 						actions: [
@@ -208,7 +208,7 @@ export class TemplateSelectorModal extends Modal {
 					};
 				} else {
 					return {
-						icon: '❌',
+						icon: '',
 						title: '加载失败',
 						message: '加载模板时发生错误，请稍后重试或检查设置。',
 						actions: [
@@ -220,7 +220,7 @@ export class TemplateSelectorModal extends Modal {
 			}
 			case TemplateLoadStatus.EMPTY:
 				return {
-					icon: '📝',
+					icon: '',
 					title: '暂无模板',
 					message: '模板文件夹中还没有找到任何 .md 模板文件。您可以创建一些模板文件，或者选择其他文件夹。',
 					actions: [
@@ -267,7 +267,7 @@ export class TemplateSelectorModal extends Modal {
 	 */
 	private renderNoResultsState(containerEl: HTMLElement) {
 		const statusInfo = {
-			icon: '🔍',
+			icon: '',
 			title: '搜索无结果',
 			message: `未找到包含 "${this.searchQuery}" 的模板。`
 		};
@@ -352,7 +352,7 @@ export class TemplateSelectorModal extends Modal {
 		containerEl.empty();
 
 		const statusInfo = {
-			icon: '⏳',
+			icon: '',
 			title: '正在扫描模板',
 			message: '请稍候，正在重新扫描模板文件夹...'
 		};
@@ -482,7 +482,7 @@ export class TemplateSelectorModal extends Modal {
 				return; // 阻止原有的插入逻辑
 			} else {
 				// 预设不存在，显示警告并回退到原有逻辑
-				new Notice(`⚠️ 引用的预设 "${configId}" 不存在，将使用默认插入方式`);
+				new Notice(`引用的预设 "${configId}" 不存在，将使用默认插入方式`);
 			}
 		}
 
@@ -518,7 +518,7 @@ export class TemplateSelectorModal extends Modal {
 
 		} catch (error) {
 			console.error('Fast Templater: 插入模板失败', error);
-			new Notice('❌ 插入模板失败，请稍后重试。');
+			new Notice('插入模板失败，请稍后重试。');
 		}
 	}
 
@@ -532,7 +532,7 @@ export class TemplateSelectorModal extends Modal {
 
 			// 2. 如果有 Templater 处理错误，显示通知
 			if (error) {
-				new Notice(`⚠️ ${error}进行 frontmatter 合并`);
+				new Notice(`${error}进行 frontmatter 合并`);
 			}
 
 			// 3. 解析处理后的内容，分离 frontmatter 和主体
@@ -544,7 +544,7 @@ export class TemplateSelectorModal extends Modal {
 			// 5. 如果模板没有 frontmatter，直接插入处理后的内容
 			if (Object.keys(templateFM).length === 0) {
 				editor.replaceSelection(processedContent);
-				const notice = `✅ 模板 "${template.name}" 已插入（模板无 frontmatter，直接插入）${usedTemplater ? '并使用 Templater 处理' : ''}。`;
+				const notice = `模板 "${template.name}" 已插入（模板无 frontmatter，直接插入）${usedTemplater ? '并使用 Templater 处理' : ''}。`;
 				new Notice(notice);
 				return;
 			}
@@ -565,12 +565,12 @@ export class TemplateSelectorModal extends Modal {
 			const mergeInfo = Object.keys(templateFM).length > 0
 				? ` 已合并 ${Object.keys(templateFM).length} 个 frontmatter 字段`
 				: '';
-			new Notice(`✅ 模板 "${template.name}" 已插入${templaterInfo}${mergeInfo}。`);
+			new Notice(`模板 "${template.name}" 已插入${templaterInfo}${mergeInfo}。`);
 
 		} catch (error) {
 			console.error('Fast Templater: 智能 frontmatter 合并失败', error);
 			// 如果智能合并失败，回退到普通插入
-			new Notice('⚠️ Frontmatter 合并失败，回退到普通插入');
+			new Notice('Frontmatter 合并失败，回退到普通插入');
 			editor.replaceSelection(template.content);
 		}
 	}
@@ -587,13 +587,13 @@ export class TemplateSelectorModal extends Modal {
 
 		// 3. 根据处理结果显示相应的通知
 		if (usedTemplater) {
-			new Notice(`✅ 模板 "${template.name}" 已插入并使用 Templater 处理。`);
+			new Notice(`模板 "${template.name}" 已插入并使用 Templater 处理。`);
 		} else if (this.plugin.settings.enableTemplaterIntegration && !TemplateEngine.isTemplaterEnabled(this.app)) {
-			new Notice(`✅ 模板 "${template.name}" 已插入(未检测到 Templater 插件)。`);
+			new Notice(`模板 "${template.name}" 已插入(未检测到 Templater 插件)。`);
 		} else if (error) {
-			new Notice(`✅ 模板 "${template.name}" 已插入(${error})。`);
+			new Notice(`模板 "${template.name}" 已插入(${error})。`);
 		} else {
-			new Notice(`✅ 模板 "${template.name}" 已插入。`);
+			new Notice(`模板 "${template.name}" 已插入。`);
 		}
 	}
 

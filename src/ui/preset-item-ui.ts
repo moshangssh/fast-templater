@@ -52,31 +52,43 @@ export function renderPresetItemUI(
 	const { containerEl, preset, callbacks } = options;
 	const itemEl = containerEl.createDiv('fast-templater-preset-item');
 
+	// 主内容区域
+	const contentContainer = itemEl.createDiv('fast-templater-preset-content');
+
 	// 名称输入框
-	const nameContainer = itemEl.createDiv('fast-templater-preset-name');
+	const nameContainer = contentContainer.createDiv('fast-templater-preset-name');
 	const nameInputEl = nameContainer.createEl('input', {
 		type: 'text',
 		value: preset.name,
 		cls: 'fast-templater-preset-name-input',
 	}) as HTMLInputElement;
 
+	// 信息区域
+	const infoEl = contentContainer.createDiv('fast-templater-preset-info');
+	const fieldCountText = preset.fields.length === 1 ? '1 个字段' : `${preset.fields.length} 个字段`;
+	infoEl.createEl('span', {
+		text: fieldCountText,
+		cls: 'fast-templater-preset-field-count',
+	});
+	infoEl.createEl('span', {
+		text: '•',
+		cls: 'fast-templater-preset-separator',
+	});
+	infoEl.createEl('span', {
+		text: `ID: ${preset.id}`,
+		cls: 'fast-templater-preset-id',
+	});
+
 	// 操作按钮
 	const actionsContainer = itemEl.createDiv('fast-templater-preset-actions');
 	const configButtonEl = actionsContainer.createEl('button', {
-		text: '⚙️ 配置字段',
-		cls: 'mod-cta',
+		text: '配置字段',
+		cls: 'fast-templater-preset-btn-config',
 	}) as HTMLButtonElement;
 	const deleteButtonEl = actionsContainer.createEl('button', {
-		text: '🗑️ 删除',
-		cls: 'mod-warning',
+		text: '删除',
+		cls: 'fast-templater-preset-btn-delete',
 	}) as HTMLButtonElement;
-
-	// 信息区域
-	const infoEl = itemEl.createDiv('fast-templater-preset-info');
-	infoEl.createEl('small', {
-		text: `ID: ${preset.id} | 字段数量: ${preset.fields.length}`,
-		cls: 'setting-item-description',
-	});
 
 	const context: RenderPresetItemContext = {
 		listContainerEl: containerEl,

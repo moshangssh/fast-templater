@@ -128,23 +128,23 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 		const isTemplaterInstalled = isTemplaterEnabled(this.app);
 		const isIntegrationEnabled = this.settings.enableTemplaterIntegration;
 
-		let statusIcon = '❌';
+		let statusIcon = '';
 		let statusText = 'Templater 未安装';
 		let statusColor = 'var(--text-muted)';
 		const details: string[] = [];
 
 		if (isIntegrationEnabled && isTemplaterInstalled) {
-			statusIcon = '✅';
+			statusIcon = '';
 			statusText = 'Templater 集成已启用';
 			statusColor = 'var(--text-success)';
 			details.push('模板中的 Templater 语法将自动执行');
 		} else if (isIntegrationEnabled && !isTemplaterInstalled) {
-			statusIcon = '⚠️';
+			statusIcon = '';
 			statusText = 'Templater 集成已启用,但未检测到 Templater 插件';
 			statusColor = 'var(--text-warning)';
 			details.push('请先在社区插件中安装 Templater 插件');
 		} else if (!isIntegrationEnabled && isTemplaterInstalled) {
-			statusIcon = '💤';
+			statusIcon = '';
 			statusText = 'Templater 已安装,但集成未启用';
 			statusColor = 'var(--text-muted)';
 		} else {
@@ -167,35 +167,35 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 		const status = this.plugin.templateManager.getTemplateLoadStatus();
 		const folderPath = this.settings.templateFolderPath || '未设置';
 
-		let statusIcon = '⏳';
+		let statusIcon = '';
 		let statusText = '未知状态';
 		let statusColor = 'var(--text-muted)';
 		let showReloadButton = true;
 
 		switch (status.status) {
 			case 'loading':
-				statusIcon = '⏳';
+				statusIcon = '';
 				statusText = '加载中...';
 				statusColor = 'var(--text-accent)';
 				showReloadButton = false;
 				break;
 			case 'success':
-				statusIcon = '✅';
+				statusIcon = '';
 				statusText = `成功加载 ${status.count} 个模板`;
 				statusColor = 'var(--text-success)';
 				break;
 			case 'empty':
-				statusIcon = '📂';
+				statusIcon = '';
 				statusText = '文件夹为空或未找到模板';
 				statusColor = 'var(--text-muted)';
 				break;
 			case 'error':
-				statusIcon = '❌';
+				statusIcon = '';
 				statusText = status.message || '加载失败';
 				statusColor = 'var(--text-error)';
 				break;
 			case 'idle':
-				statusIcon = '💤';
+				statusIcon = '';
 				statusText = '未加载';
 				statusColor = 'var(--text-muted)';
 				break;
@@ -211,7 +211,7 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 		const statusInfo = this.getTemplaterStatusInfo();
 
 		return this.renderStatusBlock(containerEl, {
-			icon: '🔌',
+			icon: '',
 			title: 'Templater 状态',
 			items: [
 				{
@@ -237,7 +237,7 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 
 		// 使用统一的状态块渲染函数
 		const statusEl = this.renderStatusBlock(containerEl, {
-			icon: '📋',
+			icon: '',
 			title: '模板状态',
 			items: [
 				{
@@ -302,7 +302,6 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 		const hintEl = containerEl.createEl('div', { cls: 'setting-item-description' });
 		const contentEl = hintEl.createEl('small');
 
-		contentEl.createEl('span', { text: '💡 ' });
 		contentEl.createEl('strong', { text: '提示：' });
 		contentEl.createEl('br');
 
@@ -330,7 +329,7 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 
 		// 添加版本信息
 		const versionInfo = containerEl.createEl('div', {cls: 'setting-item-description'});
-		versionInfo.createEl('small', {text: '📋 Fast Templater v1.0.0 - 可视化模板插件，帮助您通过可视化界面插入模板片段。'});
+		versionInfo.createEl('small', {text: 'Fast Templater v1.0.0 - 可视化模板插件，帮助您通过可视化界面插入模板片段。'});
 
 		// 添加分隔线
 		containerEl.createEl('hr', {cls: 'setting-item-hr'});
@@ -367,9 +366,9 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 					// 验证保存后的路径
 					const isValid = await this.plugin.templateManager.validateTemplatePath(cleanPath);
 					if (isValid) {
-						new Notice(`✅ 路径 "${cleanPath}" 有效，已找到模板文件`);
+						new Notice(`路径 "${cleanPath}" 有效，已找到模板文件`);
 					} else {
-						new Notice(`⚠️ 路径 "${cleanPath}" 未找到模板文件`);
+						new Notice(`路径 "${cleanPath}" 未找到模板文件`);
 					}
 				};
 
@@ -449,7 +448,7 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 		// 添加新预设按钮
 		const addButtonContainer = containerEl.createDiv('fast-templater-preset-actions');
 		const addPresetButton = addButtonContainer.createEl('button', {
-			text: '➕ 添加新预设',
+			text: '添加新预设',
 			cls: 'mod-cta'
 		});
 
@@ -506,10 +505,10 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 	private async renamePreset(presetId: string, newName: string): Promise<void> {
 		try {
 			const updatedPreset = await this.presetManager.renamePreset(presetId, newName);
-			new Notice(`✅ 预设已重命名为: ${updatedPreset.name}`);
+			new Notice(`预设已重命名为: ${updatedPreset.name}`);
 		} catch (error) {
 			console.error('Fast Templater: 重命名预设失败', error);
-			new Notice('❌ 重命名预设失败');
+			new Notice('重命名预设失败');
 			throw error;
 		}
 	}
@@ -526,10 +525,10 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 
 			await this.presetManager.deletePreset(presetId);
 
-			new Notice(`✅ 已删除预设: ${preset.name}`);
+			new Notice(`已删除预设: ${preset.name}`);
 		} catch (error) {
 			console.error('Fast Templater: 删除预设失败', error);
-			new Notice('❌ 删除预设失败');
+			new Notice('删除预设失败');
 		}
 	}
 

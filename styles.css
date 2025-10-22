@@ -1,17 +1,15 @@
 /*
-
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
+Fast Templater - Obsidian Native Style
+使用 Obsidian 原生 CSS 变量以增强主题兼容性
 */
 
-/* 模板选择模态窗口样式 */
+/* ========================================
+   模板选择模态窗口样式
+   ======================================== */
 
-/* 搜索框样式 */
+/* 搜索框样式 - Obsidian 原生风格 */
 .fast-templater-search-container {
-	margin: 0 0 12px 0;
+	margin: 0 0 16px 0;
 	padding: 12px;
 	position: relative;
 	flex-shrink: 0;
@@ -19,106 +17,94 @@ If your plugin does not need CSS, delete this file.
 
 .fast-templater-search-input {
 	width: 100%;
-	padding: 10px 36px 10px 12px; /* 右侧内边距给按钮留出空间 */
+	padding: 14px 40px 14px 16px;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
-	background-color: var(--background-primary);
-	color: var(--text-normal);
-	font-size: 14px;
-	outline: none;
-	transition: all 0.2s ease;
-	box-sizing: border-box;
-	font-weight: 400;
-}
-
-/* 清空搜索按钮 */
-.fast-templater-search-clear {
-	position: absolute;
-	top: 50%;
-	right: 28px; /* 16px (容器内边距) + 12px */
-	transform: translateY(-50%);
-	width: 20px;
-	height: 20px;
-	background: transparent;
-	border: none;
-	border-radius: 50%;
-	padding: 0;
-	margin: 0;
-	font-size: 18px;
-	line-height: 20px;
-	color: var(--text-muted);
-	cursor: pointer;
-	display: none; /* 默认隐藏，由 JS 控制 */
-	transition: all 0.15s ease;
-	-webkit-tap-highlight-color: transparent;
-	text-align: center;
-	font-weight: 300;
-}
-
-.fast-templater-search-clear:hover {
-	color: var(--text-normal);
-	background-color: var(--background-modifier-hover);
-	transform: translateY(-50%) scale(1.05);
-}
-
-.fast-templater-search-clear:active {
-	color: var(--interactive-accent);
-	background-color: var(--background-modifier-border);
-	transform: translateY(-50%) scale(0.95);
-}
-
-.fast-templater-search-input:focus {
-	border-color: var(--interactive-accent);
-	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
-	background-color: var(--background-primary-alt, var(--background-primary));
-}
-
-.fast-templater-search-input::placeholder {
-	color: var(--text-muted);
-	opacity: 0.8;
-}
-
-/* 搜索输入框主题增强 */
-.theme-dark .fast-templater-search-input {
+	border-radius: var(--radius-xl);
 	background-color: var(--background-secondary);
-}
-
-.theme-light .fast-templater-search-input {
-	background-color: var(--background-primary-alt);
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	outline: none;
+	box-sizing: border-box;
+	box-shadow: none;
 }
 
 .fast-templater-search-input:hover {
 	border-color: var(--interactive-accent);
-	box-shadow: 0 1px 4px rgba(var(--interactive-accent-rgb), 0.1);
+	background-color: var(--background-modifier-hover);
+}
+
+/* 清空搜索按钮 - Obsidian 原生风格 */
+.fast-templater-search-clear {
+	position: absolute;
+	top: 50%;
+	right: 28px;
+	transform: translateY(-50%);
+	width: 24px;
+	height: 24px;
+	background: transparent;
+	border: none;
+	border-radius: var(--radius-xl);
+	padding: 0;
+	margin: 0;
+	font-size: 18px;
+	line-height: 24px;
+	color: var(--icon-color-muted);
+	cursor: pointer;
+	display: none;
+	-webkit-tap-highlight-color: transparent;
+	text-align: center;
+	font-weight: 400;
+}
+
+.fast-templater-search-clear:hover {
+	color: var(--icon-color-hover);
+	background-color: var(--background-modifier-hover);
+}
+
+.fast-templater-search-clear:active {
+	color: var(--interactive-accent);
+	background-color: var(--interactive-accent-hover);
+}
+
+.fast-templater-search-input:focus {
+	border-color: var(--interactive-accent);
+	border-width: 2px;
+	padding: 13px 39px 13px 15px;
+	background-color: var(--background-primary);
+}
+
+.fast-templater-search-input::placeholder {
+	color: var(--text-muted);
+	opacity: 0.7;
 }
 
 /* 主容器 - 双列布局 */
 .fast-templater-main-container {
 	display: flex;
-	gap: 12px;
+	gap: 24px;
 	margin: 12px 0;
-	height: 480px; /* 固定高度 */
+	height: 480px;
 	max-height: 480px;
 }
 
 /* 左侧区域容器（搜索框 + 模板列表） */
 .fast-templater-left-container {
-	flex: 0 0 40%; /* 增加到40%宽度，给列表更多空间 */
-	min-width: 250px; /* 减小最小宽度 */
-	max-width: 350px; /* 减小最大宽度 */
+	flex: 0 0 40%;
+	min-width: 250px;
+	max-width: 350px;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
 	border-right: 1px solid var(--background-modifier-border);
-	padding-right: 12px;
+	padding-right: 16px;
 }
 
 /* 右侧预览容器 */
 .fast-templater-preview-container {
-	flex: 1; /* 占据剩余空间 */
-	min-width: 0; /* 允许收缩 */
-	padding-left: 12px;
+	flex: 1;
+	min-width: 0;
+	padding-left: 16px;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -127,8 +113,8 @@ If your plugin does not need CSS, delete this file.
 
 .fast-templater-preview-title {
 	margin: 0 0 12px 0;
-	font-size: 16px;
-	font-weight: 600;
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-semibold);
 	color: var(--text-normal);
 	flex-shrink: 0;
 }
@@ -137,10 +123,11 @@ If your plugin does not need CSS, delete this file.
 	flex: 1;
 	background-color: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
-	padding: 12px;
+	border-radius: var(--radius-l);
+	padding: 16px;
 	overflow-y: auto;
-	height: 0; /* 强制使用flex布局 */
+	height: 0;
+	box-shadow: var(--shadow-s);
 }
 
 /* 预览内容样式 */
@@ -176,16 +163,16 @@ If your plugin does not need CSS, delete this file.
 	padding: 16px 0;
 }
 
-/* 状态容器样式 */
+/* 状态容器样式 - Obsidian 原生风格 */
 .fast-templater-status-container {
 	text-align: center;
-	padding: 40px 20px;
-	max-width: 400px;
+	padding: 32px 24px;
+	max-width: 420px;
 	margin: 0 auto;
-	background-color: var(--background-primary-alt, var(--background-secondary));
+	background-color: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	border-radius: var(--radius-xl);
+	box-shadow: var(--shadow-s);
 }
 
 .fast-templater-status-header {
@@ -197,29 +184,26 @@ If your plugin does not need CSS, delete this file.
 }
 
 .fast-templater-status-icon {
-	font-size: 32px;
+	font-size: 48px;
 	line-height: 1;
-	filter: brightness(1.1); /* 增强图标在暗色主题下的可见性 */
-	transition: filter 0.2s ease;
 }
 
 .fast-templater-status-title {
 	margin: 0;
-	font-size: 18px;
-	font-weight: 600;
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-semibold);
 	color: var(--text-normal);
-	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* 增强可读性 */
 }
 
 .fast-templater-status-message {
 	color: var(--text-muted);
-	font-size: 14px;
-	line-height: 1.5;
+	font-size: var(--font-ui-small);
+	line-height: 1.6;
 	margin: 0 0 24px 0;
-	background-color: var(--background-primary);
-	padding: 12px;
-	border-radius: 6px;
-	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-secondary-alt);
+	padding: 16px;
+	border-radius: var(--radius-m);
+	border: none;
 }
 
 .fast-templater-status-actions {
@@ -229,43 +213,6 @@ If your plugin does not need CSS, delete this file.
 	align-items: center;
 }
 
-.fast-templater-status-actions button {
-	min-width: 140px;
-	padding: 10px 16px;
-	border-radius: 6px;
-	font-size: 14px;
-	cursor: pointer;
-	transition: all 0.2s ease;
-	font-weight: 500;
-	border: 1px solid var(--background-modifier-border);
-}
-
-.fast-templater-status-actions button:not(.mod-cta) {
-	background-color: var(--background-modifier-hover);
-	color: var(--text-normal);
-}
-
-.fast-templater-status-actions button:not(.mod-cta):hover {
-	background-color: var(--interactive-accent);
-	color: var(--text-on-accent);
-	border-color: var(--interactive-accent);
-	transform: translateY(-1px);
-	box-shadow: 0 2px 8px rgba(var(--interactive-accent-rgb), 0.3);
-}
-
-/* 主要按钮增强 */
-.fast-templater-status-actions button.mod-cta {
-	background-color: var(--interactive-accent);
-	color: var(--text-on-accent);
-	border-color: var(--interactive-accent);
-	box-shadow: 0 2px 8px rgba(var(--interactive-accent-rgb), 0.2);
-}
-
-.fast-templater-status-actions button.mod-cta:hover {
-	background-color: var(--interactive-accent-hover);
-	transform: translateY(-1px);
-	box-shadow: 0 4px 12px rgba(var(--interactive-accent-rgb), 0.4);
-}
 
 /* 搜索无结果时的特殊样式 */
 .fast-templater-status-container.fast-templater-no-results .fast-templater-status-icon {
@@ -312,17 +259,6 @@ If your plugin does not need CSS, delete this file.
 .fast-templater-search-input.fast-templater-search-loading {
 	background-image: linear-gradient(100deg, transparent 40%, var(--interactive-accent) 50%, transparent 60%);
 	background-size: 40px 40px;
-	animation: fast-templater-search-loading 1.2s linear infinite;
-	transition: background-position 0.2s ease;
-}
-
-@keyframes fast-templater-search-loading {
-	0% {
-		background-position: -40px 0;
-	}
-	100% {
-		background-position: 40px 0;
-	}
 }
 
 .fast-templater-template-list {
@@ -331,82 +267,77 @@ If your plugin does not need CSS, delete this file.
 	margin: 0;
 }
 
+/* 模板列表项样式 - Obsidian 原生风格 */
 .fast-templater-template-item {
-	padding: 12px 16px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
+	padding: 16px;
+	border: none;
+	border-radius: var(--radius-m);
 	margin-bottom: 8px;
 	cursor: pointer;
-	transition: all 0.2s ease;
-	background-color: var(--background-primary);
+	background-color: var(--background-secondary);
 	position: relative;
 	overflow: hidden;
+	box-shadow: none;
 }
 
+/* 选中指示器 */
 .fast-templater-template-item::before {
 	content: '';
 	position: absolute;
 	top: 0;
 	left: 0;
-	right: 0;
-	height: 2px;
-	background: linear-gradient(90deg, var(--interactive-accent), var(--interactive-accent-hover));
-	transform: scaleX(0);
-	transition: transform 0.2s ease;
-	transform-origin: left;
+	width: 4px;
+	height: 100%;
+	background: var(--interactive-accent);
+	transform: scaleY(0);
+	transform-origin: center;
+	border-radius: 0 var(--radius-s) var(--radius-s) 0;
 }
 
 .fast-templater-template-item:hover {
 	background-color: var(--background-modifier-hover);
-	border-color: var(--interactive-accent);
-	transform: translateY(-1px);
-	box-shadow: 0 2px 8px rgba(var(--interactive-accent-rgb), 0.15);
-}
-
-.fast-templater-template-item:hover::before {
-	transform: scaleX(1);
+	box-shadow: var(--shadow-s);
 }
 
 /* 选中状态样式 */
 .fast-templater-template-item.fast-templater-template-item-selected {
-	background-color: var(--interactive-accent);
-	border-color: var(--interactive-accent);
-	box-shadow: 0 2px 8px rgba(var(--interactive-accent-rgb), 0.3);
-	transform: translateY(-1px);
+	background-color: var(--interactive-accent-hover);
+	box-shadow: var(--shadow-s);
 }
 
 .fast-templater-template-item.fast-templater-template-item-selected::before {
-	transform: scaleX(1);
-	background: linear-gradient(90deg, var(--text-on-accent), var(--interactive-accent-hover));
+	width: 4px;
 }
 
+.fast-templater-template-item.fast-templater-template-item-selected .fast-templater-template-name {
+	color: var(--interactive-accent);
+	font-weight: 600;
+}
 
 .fast-templater-template-name {
-	font-weight: 500;
+	font-size: var(--font-ui-medium);
 	color: var(--text-normal);
 	display: block;
-	transition: color 0.2s ease;
 	position: relative;
 	z-index: 1;
 }
 
 /* 点击状态样式 */
 .fast-templater-template-item:active {
-	transform: translateY(0);
-	box-shadow: 0 1px 4px rgba(var(--interactive-accent-rgb), 0.2);
+	box-shadow: var(--shadow-s);
 }
 
-/* 设置页状态块样式 */
+/* 设置页状态块样式 - Obsidian 原生风格 */
 .fast-templater-status-block {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
-	padding: 16px 20px;
+	padding: 24px;
 	margin: 16px 0;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 10px;
-	background-color: var(--background-primary-alt, var(--background-secondary));
-	box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+	border-radius: var(--radius-l);
+	background-color: var(--background-secondary);
+	box-shadow: var(--shadow-s);
 }
 
 .fast-templater-status-block__header {
@@ -418,14 +349,14 @@ If your plugin does not need CSS, delete this file.
 }
 
 .fast-templater-status-block__icon {
-	font-size: 20px;
+	font-size: 24px;
 	line-height: 1;
 }
 
 .fast-templater-status-block__title {
-	font-weight: 600;
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-semibold);
 	color: var(--text-normal);
-	font-size: 15px;
 }
 
 .fast-templater-status-block__items {
@@ -470,23 +401,12 @@ If your plugin does not need CSS, delete this file.
 
 .fast-templater-status-block__actions {
 	display: flex;
-	gap: 10px;
+	gap: 12px;
 	flex-wrap: wrap;
 	padding-top: 4px;
 }
 
-.fast-templater-status-block__actions button {
-	min-width: 120px;
-}
-
-.theme-dark .fast-templater-status-block {
-	background-color: var(--background-secondary);
-	box-shadow: 0 3px 12px rgba(0, 0, 0, 0.24);
-}
-
-.theme-light .fast-templater-status-block {
-	background-color: var(--background-primary-alt);
-}
+/* Obsidian 原生按钮样式 - 已移除所有自定义样式，直接使用 Obsidian 原生按钮类 */
 
 @media (max-width: 700px) {
 	.fast-templater-status-block__item {
@@ -495,7 +415,9 @@ If your plugin does not need CSS, delete this file.
 	}
 }
 
-/* 字段配置模态样式 */
+/* ========================================
+   字段配置模态样式 - Obsidian 原生风格
+   ======================================== */
 .fast-templater-field-config-container {
 	display: flex;
 	flex-direction: column;
@@ -512,12 +434,36 @@ If your plugin does not need CSS, delete this file.
 	padding-right: 4px;
 }
 
+/* 自定义滚动条 - Obsidian 原生风格 */
+.fast-templater-fields-list::-webkit-scrollbar {
+	width: 8px;
+}
+
+.fast-templater-fields-list::-webkit-scrollbar-track {
+	background: var(--background-secondary-alt);
+	border-radius: var(--radius-s);
+}
+
+.fast-templater-fields-list::-webkit-scrollbar-thumb {
+	background: var(--background-modifier-border);
+	border-radius: var(--radius-s);
+}
+
+.fast-templater-fields-list::-webkit-scrollbar-thumb:hover {
+	background: var(--interactive-accent);
+}
+
 .fast-templater-field-item {
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 10px;
-	padding: 16px 20px;
-	background-color: var(--background-primary);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+	border-radius: var(--radius-l);
+	padding: 16px 24px;
+	background-color: var(--background-secondary);
+	box-shadow: var(--shadow-s);
+}
+
+.fast-templater-field-item:hover {
+	box-shadow: var(--shadow-s);
+	border-color: var(--interactive-accent);
 }
 
 .fast-templater-field-header {
@@ -554,14 +500,14 @@ If your plugin does not need CSS, delete this file.
 	display: none;
 }
 
+/* 拖拽手柄 - Obsidian 原生风格 */
 .fast-templater-field-drag-handle {
-	font-size: 18px;
+	font-size: 20px;
 	cursor: grab;
 	user-select: none;
 	color: var(--text-muted);
-	padding: 2px 4px;
-	border-radius: 6px;
-	transition: background-color 0.15s ease, color 0.15s ease;
+	padding: 4px 8px;
+	border-radius: var(--radius-s);
 }
 
 .fast-templater-field-drag-handle:hover {
@@ -571,23 +517,28 @@ If your plugin does not need CSS, delete this file.
 
 .fast-templater-field-drag-handle:active {
 	cursor: grabbing;
+	background-color: var(--interactive-accent-hover);
+	color: var(--interactive-accent);
 }
 
+/* 拖拽状态 - Obsidian 原生风格 */
 .fast-templater-field-item--dragging {
-	opacity: 0.75;
+	opacity: 0.6;
+	box-shadow: var(--shadow-l);
 }
 
 .fast-templater-field-item--drag-over-before,
 .fast-templater-field-item--drag-over-after {
 	border-color: var(--interactive-accent);
+	background-color: var(--interactive-accent-hover);
 }
 
 .fast-templater-field-item--drag-over-before {
-	box-shadow: 0 -4px 0 var(--interactive-accent);
+	box-shadow: 0 -3px 0 var(--interactive-accent);
 }
 
 .fast-templater-field-item--drag-over-after {
-	box-shadow: 0 4px 0 var(--interactive-accent);
+	box-shadow: 0 3px 0 var(--interactive-accent);
 }
 
 .fast-templater-field-item--collapsed {
@@ -607,7 +558,6 @@ If your plugin does not need CSS, delete this file.
 
 .fast-templater-field-header--collapsible {
 	cursor: pointer;
-	transition: background-color 0.15s ease;
 }
 
 .fast-templater-field-header--collapsible:hover {
@@ -645,37 +595,93 @@ If your plugin does not need CSS, delete this file.
 	align-items: flex-start;
 }
 
+/* 确保select元素有足够宽度 */
+.fast-templater-field-row select {
+	min-width: 0;
+	max-width: 100%;
+}
+
 .fast-templater-field-label {
-	font-size: 13px;
-	font-weight: 600;
+	font-size: 14px;
+	font-weight: 500;
 	color: var(--text-muted);
 	text-transform: none;
+	line-height: 1.5;
 }
 
-.fast-templater-field-input {
+/* Obsidian 原生输入框样式 - 统一尺寸 */
+.fast-templater-field-input,
+.fast-templater-preset-name-input {
 	width: 100%;
-	padding: 8px 10px;
+	padding: 10px 12px;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
-	background-color: var(--background-primary);
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
 	color: var(--text-normal);
+	font-size: 14px;
+	font-weight: 400;
+	line-height: 1.5;
 	box-sizing: border-box;
-	transition: border-color 0.2s ease, box-shadow 0.2s ease;
-	line-height: 1.4;
+	outline: none;
+	min-height: 40px;
 }
 
-.fast-templater-field-input:focus {
+.fast-templater-field-input:hover,
+.fast-templater-preset-name-input:hover {
 	border-color: var(--interactive-accent);
-	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+	background-color: var(--background-modifier-hover);
 }
 
+.fast-templater-field-input:focus,
+.fast-templater-preset-name-input:focus {
+	border-color: var(--interactive-accent);
+	border-width: 2px;
+	padding: 9px 11px;
+	background-color: var(--background-primary);
+}
+
+/* Select 下拉框 - 统一尺寸 */
 .fast-templater-field-select {
-	padding-right: 32px;
-	min-height: 34px;
+	padding: 10px 32px 10px 12px;
+	min-height: 40px;
+	width: 100%;
+	appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 12px center;
+	background-size: 12px;
+	font-size: 14px;
+	font-weight: 400;
+	line-height: 1.5;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+}
+
+.fast-templater-field-select:hover {
+	border-color: var(--interactive-accent);
+	background-color: var(--background-modifier-hover);
+}
+
+.fast-templater-field-select:focus {
+	padding: 9px 31px 9px 11px;
+	border-color: var(--interactive-accent);
+	border-width: 2px;
+	background-color: var(--background-primary);
 }
 
 .fast-templater-field-select option {
-	white-space: nowrap;
+	padding: 8px 12px;
+	font-size: 14px;
+	line-height: 1.5;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+}
+
+/* 暗色主题下的select箭头 */
+.theme-dark .fast-templater-field-select {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23aaa' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
 }
 
 .fast-templater-options-list {
@@ -722,12 +728,16 @@ If your plugin does not need CSS, delete this file.
 
 .fast-templater-empty-fields {
 	margin: 0;
-	padding: 20px;
-	border: 1px dashed var(--background-modifier-border);
-	border-radius: 8px;
-	background-color: var(--background-primary-alt, var(--background-secondary));
+	padding: 24px;
+	border: 2px dashed var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary-alt);
 	text-align: center;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
 }
+
+
 
 @media (max-width: 700px) {
 	.fast-templater-field-row {
@@ -837,16 +847,6 @@ If your plugin does not need CSS, delete this file.
 		width: 100%;
 	}
 
-	.fast-templater-status-actions button {
-		min-width: 120px;
-		width: 100%;
-		max-width: 280px;
-		padding: 14px 20px; /* 增大触摸目标 */
-		font-size: 16px;
-		font-weight: 500;
-		border-radius: 8px; /* 稍微增大圆角 */
-		-webkit-tap-highlight-color: transparent; /* 移除点击高亮 */
-	}
 
 	/* 移动端搜索框优化 */
 	.fast-templater-search-container {
@@ -857,14 +857,14 @@ If your plugin does not need CSS, delete this file.
 	.fast-templater-search-input {
 		padding: 14px 36px 14px 16px; /* 保持右侧按钮空间 */
 		font-size: 16px; /* 防止iOS缩放 */
-		border-radius: 8px;
+		border-radius: var(--radius-xl);
 	}
 
 	/* 移动端模板列表项优化 */
 	.fast-templater-template-item {
 		padding: 16px;
 		margin-bottom: 10px;
-		border-radius: 8px;
+		border-radius: var(--radius-m);
 		min-height: 52px; /* 最小触摸目标 */
 		display: flex;
 		align-items: center;
@@ -928,11 +928,6 @@ If your plugin does not need CSS, delete this file.
 		gap: 10px;
 	}
 
-	.fast-templater-status-actions button {
-		max-width: none; /* 移除最大宽度限制 */
-		padding: 16px 20px; /* 更大的触摸目标 */
-		min-height: 52px;
-	}
 
 	/* 小屏幕搜索框进一步优化 - 只调整需要改变的属性 */
 	.fast-templater-search-input {
@@ -958,7 +953,293 @@ If your plugin does not need CSS, delete this file.
 	}
 }
 
-/* Frontmatter 预设管理样式 */
+/* ========================================
+   Frontmatter 表单模态样式 - Obsidian 原生风格
+   ======================================== */
+
+/* 表单标题样式 */
+.fast-templater-form-title {
+	margin: 0 0 12px 0;
+	font-size: 20px;
+	font-weight: 600;
+	color: var(--text-normal);
+	padding-bottom: 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* 表单主容器 */
+.fast-templater-frontmatter-manager-container {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 8px 0;
+}
+
+/* 说明区域样式 */
+.fast-templater-form-description {
+	background-color: var(--background-secondary-alt);
+	border-left: 3px solid var(--interactive-accent);
+	border-radius: var(--radius-s);
+	padding: 8px 12px;
+	margin: 0;
+}
+
+.fast-templater-form-description-text {
+	margin: 0;
+	color: var(--text-normal);
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+/* 表单容器样式 */
+.fast-templater-form-container {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	max-height: 55vh;
+	overflow-y: auto;
+	padding: 4px;
+}
+
+/* 自定义滚动条 */
+.fast-templater-form-container::-webkit-scrollbar {
+	width: 8px;
+}
+
+.fast-templater-form-container::-webkit-scrollbar-track {
+	background: var(--background-secondary-alt);
+	border-radius: var(--radius-s);
+}
+
+.fast-templater-form-container::-webkit-scrollbar-thumb {
+	background: var(--background-modifier-border);
+	border-radius: var(--radius-s);
+}
+
+.fast-templater-form-container::-webkit-scrollbar-thumb:hover {
+	background: var(--interactive-accent);
+}
+
+/* 表单字段样式 */
+.fast-templater-form-field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.fast-templater-form-label {
+	font-size: 13px;
+	color: var(--text-muted);
+	font-weight: 600;
+	margin-bottom: 0;
+}
+
+/* 表单输入框样式 - 紧凑尺寸 */
+.fast-templater-form-input,
+.fast-templater-form-select {
+	width: 100%;
+	padding: 8px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: 14px;
+	line-height: 1.5;
+	box-sizing: border-box;
+	outline: none;
+	min-height: 36px;
+	transition: all 0.2s ease;
+}
+
+.fast-templater-form-input:hover,
+.fast-templater-form-select:hover {
+	border-color: var(--interactive-accent);
+	background-color: var(--background-modifier-hover);
+}
+
+.fast-templater-form-input:focus,
+.fast-templater-form-select:focus {
+	border-color: var(--interactive-accent);
+	border-width: 2px;
+	padding: 7px 11px;
+	background-color: var(--background-primary);
+	box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+/* Select 下拉框特殊样式 */
+.fast-templater-form-select {
+	padding: 8px 32px 8px 12px;
+	appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 12px center;
+	background-size: 12px;
+	cursor: pointer;
+}
+
+.fast-templater-form-select:focus {
+	padding: 7px 31px 7px 11px;
+}
+
+.theme-dark .fast-templater-form-select {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23aaa' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+}
+
+/* 多选框容器样式 */
+.fast-templater-multi-select-container {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 4px;
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+}
+
+.fast-templater-checkbox-container {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 8px;
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+.fast-templater-checkbox-container:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.fast-templater-form-checkbox {
+	width: 18px;
+	height: 18px;
+	cursor: pointer;
+	accent-color: var(--interactive-accent);
+}
+
+.fast-templater-checkbox-label {
+	font-size: 14px;
+	line-height: 1.5;
+	color: var(--text-normal);
+	cursor: pointer;
+	user-select: none;
+}
+
+/* 操作按钮容器样式 */
+.fast-templater-form-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	padding-top: 12px;
+	border-top: 1px solid var(--background-modifier-border);
+	margin-top: 8px;
+}
+
+/* 按钮样式 - Obsidian 原生风格 */
+.fast-templater-form-btn {
+	min-width: 100px;
+	padding: 8px 20px;
+	border: none;
+	border-radius: var(--radius-m);
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.fast-templater-form-btn--cancel {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.fast-templater-form-btn--cancel:hover {
+	background-color: var(--background-modifier-border);
+}
+
+.fast-templater-form-btn--cancel:active {
+	transform: scale(0.98);
+}
+
+.fast-templater-form-btn--confirm {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.fast-templater-form-btn--confirm:hover {
+	background-color: var(--interactive-accent-hover);
+}
+
+.fast-templater-form-btn--confirm:active {
+	transform: scale(0.98);
+}
+
+.fast-templater-form-btn--confirm:disabled {
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+/* 响应式布局 - 表单优化 */
+@media (max-width: 768px) {
+	.fast-templater-form-title {
+		font-size: 18px;
+		margin-bottom: 8px;
+	}
+
+	.fast-templater-form-description {
+		padding: 8px 12px;
+	}
+
+	.fast-templater-form-container {
+		gap: 8px;
+		max-height: 60vh;
+	}
+
+	.fast-templater-form-actions {
+		flex-direction: row;
+		gap: 8px;
+	}
+
+	.fast-templater-form-btn {
+		flex: 1;
+		min-width: 0;
+	}
+}
+
+@media (max-width: 480px) {
+	.fast-templater-form-title {
+		font-size: 17px;
+	}
+
+	.fast-templater-form-description {
+		padding: 4px 8px;
+	}
+
+	.fast-templater-form-description-text {
+		font-size: 12px;
+	}
+
+	.fast-templater-form-input,
+	.fast-templater-form-select {
+		padding: 10px 12px;
+		font-size: 16px; /* 防止 iOS 缩放 */
+	}
+
+	.fast-templater-form-select {
+		padding: 10px 32px 10px 12px;
+	}
+
+	.fast-templater-form-btn {
+		padding: 10px 16px;
+		font-size: 14px;
+	}
+}
+
+/* ========================================
+   Frontmatter 预设管理样式 - Obsidian 原生风格
+   ======================================== */
 
 /* 预设管理容器 */
 .fast-templater-preset-actions {
@@ -967,39 +1248,10 @@ If your plugin does not need CSS, delete this file.
 	justify-content: flex-start;
 }
 
-.fast-templater-preset-actions button {
-	padding: 8px 16px;
-	border-radius: 6px;
-	border: 1px solid var(--interactive-accent);
-	background-color: var(--interactive-accent);
-	color: var(--text-on-accent);
-	cursor: pointer;
-	font-size: 14px;
-	font-weight: 500;
-	transition: all 0.2s ease;
-	display: flex;
-	align-items: center;
-	gap: 6px;
-}
-
-.fast-templater-preset-actions button:hover {
-	background-color: var(--interactive-accent-hover);
-	transform: translateY(-1px);
-	box-shadow: 0 2px 8px rgba(var(--interactive-accent-rgb), 0.3);
-}
-
-.fast-templater-preset-actions button:active {
-	transform: translateY(0);
-	box-shadow: 0 1px 4px rgba(var(--interactive-accent-rgb), 0.2);
-}
-
 /* 预设列表容器 */
 .fast-templater-presets-list {
-	margin-top: 12px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	background-color: var(--background-primary);
-	overflow: hidden;
+	margin-top: 16px;
+	padding: 0;
 }
 
 /* 空状态样式 */
@@ -1007,190 +1259,154 @@ If your plugin does not need CSS, delete this file.
 	padding: 32px 24px;
 	text-align: center;
 	background-color: var(--background-secondary);
-	border: 2px dashed var(--background-modifier-border);
-	border-radius: 8px;
-	margin: 12px 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	margin: 16px 0;
 }
 
 .fast-templater-empty-presets p {
 	margin: 0;
 	color: var(--text-muted);
 	font-size: 14px;
-	line-height: 1.5;
+	line-height: 1.6;
 }
 
-/* 预设项样式 */
+/* 预设项样式 - Obsidian 原生风格 */
 .fast-templater-preset-item {
-	padding: 16px 20px;
-	border-bottom: 1px solid var(--background-modifier-border);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 16px;
+	margin-bottom: 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
 	background-color: var(--background-primary);
-	transition: all 0.2s ease;
 	position: relative;
 }
 
 .fast-templater-preset-item:last-child {
-	border-bottom: none;
+	margin-bottom: 0;
 }
 
 .fast-templater-preset-item:hover {
-	background-color: var(--background-modifier-hover);
+	background-color: var(--background-secondary);
+	border-color: var(--background-modifier-border-hover);
+}
+
+/* 主内容区域 */
+.fast-templater-preset-content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-width: 0;
 }
 
 /* 预设名称容器 */
 .fast-templater-preset-name {
 	display: flex;
 	align-items: center;
-	gap: 12px;
-	margin-bottom: 8px;
+	width: 100%;
 }
 
 .fast-templater-preset-name-input {
-	flex: 1;
+	width: 100%;
 	padding: 8px 12px;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
+	border-radius: 4px;
 	background-color: var(--background-primary);
 	color: var(--text-normal);
 	font-size: 14px;
 	font-weight: 500;
 	outline: none;
-	transition: all 0.2s ease;
+	box-sizing: border-box;
+}
+
+.fast-templater-preset-name-input:hover {
+	border-color: var(--background-modifier-border-hover);
 }
 
 .fast-templater-preset-name-input:focus {
 	border-color: var(--interactive-accent);
-	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
-	background-color: var(--background-primary-alt, var(--background-secondary));
-}
-
-.fast-templater-preset-name-input:hover {
-	border-color: var(--interactive-accent);
-}
-
-/* 删除按钮样式 */
-.fast-templater-preset-item button.mod-warning {
-	padding: 6px 12px;
-	border-radius: 6px;
-	border: 1px solid var(--color-red);
-	background-color: var(--color-red);
-	color: var(--text-on-accent);
-	cursor: pointer;
-	font-size: 12px;
-	font-weight: 500;
-	transition: all 0.2s ease;
-	white-space: nowrap;
-}
-
-.fast-templater-preset-item button.mod-warning:hover {
-	background-color: var(--color-red-hover, var(--color-red));
-	transform: translateY(-1px);
-	box-shadow: 0 2px 8px rgba(var(--color-red-rgb), 0.3);
-}
-
-.fast-templater-preset-item button.mod-warning:active {
-	transform: translateY(0);
-	box-shadow: 0 1px 4px rgba(var(--color-red-rgb), 0.2);
+	box-shadow: 0 0 0 2px var(--interactive-accent-hover);
 }
 
 /* 预设信息样式 */
 .fast-templater-preset-info {
-	margin-top: 8px;
-}
-
-.fast-templater-preset-info small {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 	font-size: 12px;
 	color: var(--text-muted);
-	line-height: 1.4;
+	line-height: 1.5;
 }
 
-/* 主题特定优化 */
-.theme-dark .fast-templater-preset-item {
-	background-color: var(--background-secondary);
-	border-bottom-color: var(--background-modifier-border-2);
+.fast-templater-preset-field-count {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	color: var(--text-accent);
+	font-weight: 500;
 }
 
-.theme-dark .fast-templater-preset-name-input {
-	background-color: var(--background-secondary);
-	border-color: var(--background-modifier-border-2);
+.fast-templater-preset-separator {
+	color: var(--text-faint);
 }
 
-.theme-dark .fast-templater-preset-name-input:focus {
-	background-color: var(--background-primary);
+.fast-templater-preset-id {
+	font-family: var(--font-monospace);
+	font-size: 11px;
+	color: var(--text-faint);
 }
 
-.theme-light .fast-templater-preset-item {
-	background-color: var(--background-primary-alt);
+/* 操作按钮容器 */
+.fast-templater-preset-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
 }
 
-.theme-light .fast-templater-preset-name-input {
-	background-color: var(--background-primary-alt);
-}
-
-/* 响应式布局 */
+/* 响应式布局 - 预设项优化 */
 @media (max-width: 768px) {
 	.fast-templater-preset-actions {
 		margin: 12px 0;
-		justify-content: stretch;
-	}
-
-	.fast-templater-preset-actions button {
-		width: 100%;
-		justify-content: center;
-		padding: 12px 20px;
-		font-size: 16px;
-		border-radius: 8px;
-		min-height: 48px;
-		-webkit-tap-highlight-color: transparent;
 	}
 
 	.fast-templater-presets-list {
 		margin-top: 12px;
-		border-radius: 8px;
 	}
 
 	.fast-templater-empty-presets {
 		padding: 24px 16px;
 		margin: 8px 0;
-		border-radius: 8px;
-	}
-
-	.fast-templater-empty-presets p {
-		font-size: 15px;
-		line-height: 1.6;
 	}
 
 	.fast-templater-preset-item {
-		padding: 16px;
-		border-bottom-width: 1px;
-	}
-
-	.fast-templater-preset-name {
 		flex-direction: column;
 		align-items: stretch;
-		gap: 8px;
-		margin-bottom: 12px;
+		padding: 14px;
+		gap: 12px;
+	}
+
+	.fast-templater-preset-content {
+		width: 100%;
 	}
 
 	.fast-templater-preset-name-input {
-		padding: 12px 16px;
-		font-size: 16px;
-		border-radius: 8px;
-		min-height: 48px;
-		-webkit-tap-highlight-color: transparent;
+		padding: 10px 12px;
+		font-size: 15px;
 	}
 
-	.fast-templater-preset-item button.mod-warning {
-		padding: 12px 16px;
-		font-size: 14px;
-		border-radius: 8px;
-		min-height: 44px;
-		align-self: flex-start;
-		-webkit-tap-highlight-color: transparent;
+	.fast-templater-preset-actions {
+		width: 100%;
+		flex-direction: row;
+		gap: 8px;
 	}
 
-	.fast-templater-preset-info small {
-		font-size: 13px;
-		line-height: 1.5;
+	.fast-templater-preset-info {
+		font-size: 12px;
 	}
 }
 
@@ -1199,15 +1415,8 @@ If your plugin does not need CSS, delete this file.
 		margin: 8px 0;
 	}
 
-	.fast-templater-preset-actions button {
-		padding: 14px 20px;
-		font-size: 16px;
-		min-height: 52px;
-	}
-
 	.fast-templater-presets-list {
 		margin-top: 8px;
-		border-radius: 8px;
 	}
 
 	.fast-templater-empty-presets {
@@ -1216,20 +1425,11 @@ If your plugin does not need CSS, delete this file.
 	}
 
 	.fast-templater-preset-item {
-		padding: 14px 12px;
-	}
-
-	.fast-templater-preset-name {
-		margin-bottom: 10px;
+		padding: 12px;
+		gap: 10px;
 	}
 
 	.fast-templater-preset-name-input {
-		padding: 14px 16px;
-		min-height: 52px;
-	}
-
-	.fast-templater-preset-item button.mod-warning {
-		padding: 14px 16px;
-		min-height: 48px;
+		padding: 10px 12px;
 	}
 }

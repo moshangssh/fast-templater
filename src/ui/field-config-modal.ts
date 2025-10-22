@@ -49,7 +49,7 @@ export class FieldConfigModal extends Modal {
 
 		// 添加字段按钮
 		const addFieldBtn = actionsContainer.createEl('button', {
-			text: '➕ 添加字段',
+			text: '添加字段',
 			cls: 'mod-cta fast-templater-field-config-actions__btn'
 		});
 		addFieldBtn.onclick = () => this.addNewField(fieldsContainer);
@@ -62,14 +62,14 @@ export class FieldConfigModal extends Modal {
 
 		// 保存按钮
 		const saveBtn = actionsContainer.createEl('button', {
-			text: '💾 保存',
+			text: '保存',
 			cls: 'mod-cta fast-templater-field-config-actions__btn'
 		});
 		saveBtn.onclick = () => this.saveAndClose();
 
 		// 取消按钮
 		const cancelBtn = actionsContainer.createEl('button', {
-			text: '❌ 取消',
+			text: '取消',
 			cls: 'fast-templater-field-config-actions__btn'
 		});
 		cancelBtn.onclick = () => this.close();
@@ -162,16 +162,21 @@ export class FieldConfigModal extends Modal {
 		});
 
 		// 字段头部标题
-		headerLeft.createEl('h4', { text: `字段 ${index + 1}` });
+		const titleEl = headerLeft.createEl('h4', { text: `字段 ${index + 1}` });
 
 		const summaryEl = headerLeft.createSpan({
 			cls: 'fast-templater-field-header__summary'
 		});
 		const updateSummary = () => {
-			const summaryParts: string[] = [];
+			// 更新标题：如果有显示名称则使用显示名称，否则使用默认的"字段 N"
 			if (field.label?.trim()) {
-				summaryParts.push(`显示名称: ${field.label}`);
+				titleEl.setText(field.label);
+			} else {
+				titleEl.setText(`字段 ${index + 1}`);
 			}
+
+			// 更新摘要信息
+			const summaryParts: string[] = [];
 			if (field.key?.trim()) {
 				summaryParts.push(`键名: ${field.key}`);
 			}
@@ -187,7 +192,7 @@ export class FieldConfigModal extends Modal {
 
 		// 删除字段按钮
 		const deleteBtn = headerActions.createEl('button', {
-			text: '🗑️ 删除',
+			text: '删除',
 			cls: 'mod-warning'
 		});
 		deleteBtn.onclick = event => {
@@ -328,7 +333,7 @@ export class FieldConfigModal extends Modal {
 
 			// 添加选项按钮
 			const addOptionBtn = optionsContainer.createEl('button', {
-				text: '➕ 添加选项',
+				text: '添加选项',
 				cls: 'mod-small fast-templater-field-options__btn'
 			});
 			addOptionBtn.onclick = () => this.addOption(field, optionsListContainer, index);
@@ -426,7 +431,7 @@ export class FieldConfigModal extends Modal {
 			});
 
 			const removeOptionBtn = optionItem.createEl('button', {
-				text: '🗑️',
+				text: '删除',
 				cls: 'mod-small mod-warning fast-templater-field-options__remove'
 			});
 			removeOptionBtn.onclick = () => this.removeOption(field, optionIndex, fieldIndex);
@@ -548,7 +553,7 @@ export class FieldConfigModal extends Modal {
 		// 验证字段数据
 		const validation = this.validateFields();
 		if (!validation.isValid) {
-			new Notice(`❌ 验证失败:\n${validation.errors.join('\n')}`);
+			new Notice(`验证失败:\n${validation.errors.join('\n')}`);
 			return;
 		}
 
@@ -566,11 +571,11 @@ export class FieldConfigModal extends Modal {
 			// 通知父级刷新
 			this.onPresetsChanged?.();
 
-			new Notice('✅ 字段配置已保存');
+			new Notice('字段配置已保存');
 			this.close();
 		} catch (error) {
 			console.error('Fast Templater: 保存字段配置失败', error);
-			new Notice('❌ 保存字段配置失败');
+			new Notice('保存字段配置失败');
 		}
 	}
 
