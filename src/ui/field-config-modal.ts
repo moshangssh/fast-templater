@@ -1,6 +1,7 @@
 import { App, Modal, Notice } from 'obsidian';
 import type { FrontmatterField, FrontmatterPreset } from '@types';
 import { PresetManager } from '@presets';
+import { validateAndSave } from './ui-utils';
 
 export class FieldConfigModal extends Modal {
 	private readonly presetManager: PresetManager;
@@ -557,26 +558,24 @@ export class FieldConfigModal extends Modal {
 			return;
 		}
 
-		try {
-			// 过滤掉空字段并保存（默认值现在可以为空）
-			const filteredFields = this.fields.filter(field =>
-				field.key.trim() &&
-				field.label.trim()
-			);
-
-			const updatedPreset = await this.presetManager.updatePresetFields(this.preset.id, filteredFields);
-			this.preset = updatedPreset;
-			this.fields = updatedPreset.fields.map(field => ({ ...field }));
-
-			// 通知父级刷新
-			this.onPresetsChanged?.();
-
-			new Notice('字段配置已保存');
-			this.close();
-		} catch (error) {
-			console.error('Fast Templater: 保存字段配置失败', error);
-			new Notice('保存字段配置失败');
-		}
+		// 使用 validateAndSave 工具函数简化保存流程
+		await validateAndSave(
+			this.fields,
+			[], // 验证已在 validateFields() 中完成
+			async (filteredFields) => {
+				const updatedPreset = await this.presetManager.updatePresetFields(this.preset.id, filteredFields);
+				this.preset = updatedPreset;
+				this.fields = updatedPreset.fields.map(field => ({ ...field }));
+			},
+			{
+				filterFn: (field) => Boolean(field.key.trim() && field.label.trim()),
+				successMessage: '字段配置已保存',
+				onSuccess: () => {
+					this.onPresetsChanged?.();
+					this.close();
+				}
+			}
+		);
 	}
 
 	onClose() {

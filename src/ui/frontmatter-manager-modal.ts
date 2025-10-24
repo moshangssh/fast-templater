@@ -2,6 +2,7 @@ import { App, Modal, Notice } from 'obsidian';
 import type FastTemplater from '@core/plugin';
 import type { FrontmatterPreset, Template } from '@types';
 import * as TemplateEngine from '@engine';
+import { ObsidianTemplaterAdapter } from '@engine';
 
 export class FrontmatterManagerModal extends Modal {
 	private plugin: FastTemplater;
@@ -228,17 +229,18 @@ export class FrontmatterManagerModal extends Modal {
 	 * 解析 Templater 默认值
 	 */
 	private async parseTemplaterDefaults(): Promise<void> {
+		const templater = new ObsidianTemplaterAdapter(this.app);
 		for (const field of this.preset.fields) {
 			if (field.default && field.default.includes('<%')) {
 				try {
-					if (this.plugin.settings.enableTemplaterIntegration && TemplateEngine.isTemplaterEnabled(this.app)) {
+					if (this.plugin.settings.enableTemplaterIntegration && templater.isAvailable()) {
 						const tempTemplate: Template = {
 							id: 'temp-templater-parsing',
 							name: 'Temp Templater Parsing',
 							path: '',
 							content: field.default
 						};
-						const parsedValue = await TemplateEngine.runTemplater(this.app, tempTemplate);
+						const parsedValue = await templater.processTemplate(tempTemplate);
 						this.resolvedDefaults.set(field.key, parsedValue.trim());
 					} else {
 						this.resolvedDefaults.set(field.key, field.default);

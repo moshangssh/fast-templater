@@ -1,9 +1,10 @@
-import { Editor, MarkdownView, Plugin } from 'obsidian';
+import { Plugin } from 'obsidian';
 import { PresetManager } from '@presets';
-import { SaveSettingsOptions, SettingsManager } from '@settings';
+import { SettingsManager } from '@settings';
 import { TemplateManager } from '@templates';
 import type { AppWithSettings, FastTemplaterSettings } from '@types';
-import { FastTemplaterSettingTab, TemplateSelectorModal } from '@ui';
+import { SettingsFacade } from './SettingsFacade';
+import { UiRegistrar } from './UiRegistrar';
 
 export default class FastTemplater extends Plugin {
 	settingsManager: SettingsManager;
@@ -11,14 +12,14 @@ export default class FastTemplater extends Plugin {
 	templateManager: TemplateManager;
 	presetManager: PresetManager;
 	updateStatusBar?: () => void;
+	private settingsFacade!: SettingsFacade;
 
 	async onload() {
 		await this.initializeManagers();
 		this.setupStatusBar();
-		this.configurePresetManager();
-		this.registerRibbon();
-		this.registerCommands();
-		this.registerSettingTab();
+		this.settingsFacade = new SettingsFacade(this.updateStatusBar, () => this.templateManager.loadTemplates());
+		this.presetManager.setSaveOptionsFactory(() => this.settingsFacade.getDefaultSaveOptions());
+		new UiRegistrar(this, this.settingsManager, this.presetManager).registerAll();
 	}
 
 	onunload() {}
@@ -28,7 +29,7 @@ export default class FastTemplater extends Plugin {
 	}
 
 	async saveSettings() {
-		this.settings = await this.settingsManager.save(this.settings, this.getDefaultSaveOptions());
+		this.settings = await this.settingsManager.save(this.settings, this.settingsFacade.getDefaultSaveOptions());
 	}
 
 	openSettings() {
@@ -40,10 +41,8 @@ export default class FastTemplater extends Plugin {
 	private async initializeManagers(): Promise<void> {
 		this.settingsManager = new SettingsManager(this);
 		this.settings = await this.settingsManager.load();
-
 		this.templateManager = new TemplateManager(this.app, () => this.settings);
 		await this.templateManager.loadTemplates();
-
 		this.presetManager = new PresetManager(this.settingsManager);
 	}
 
@@ -53,77 +52,5 @@ export default class FastTemplater extends Plugin {
 			statusBarItemEl.setText(`📁 ${this.settings.templateFolderPath || '未设置'}`);
 		};
 		this.updateStatusBar();
-	}
-
-	private configurePresetManager(): void {
-		this.presetManager.setSaveOptionsFactory(() => this.getDefaultSaveOptions());
-	}
-
-	private registerRibbon(): void {
-		const ribbonIconEl = this.addRibbonIcon('layout-template', '插入可视化模板', () => {
-			new TemplateSelectorModal(this.app, this).open();
-		});
-		ribbonIconEl.addClass('fast-templater-ribbon-class');
-	}
-
-	private registerCommands(): void {
-		this.addCommand({
-			id: 'insert-template-placeholder',
-			name: '插入模板占位符',
-			icon: 'code',
-			editorCallback: (editor: Editor) => {
-				const selection = editor.getSelection();
-				if (selection) {
-					editor.replaceSelection(`{{${selection}}}`);
-				} else {
-					editor.replaceSelection('{{template-placeholder}}');
-				}
-			},
-		});
-
-		this.addCommand({
-			id: 'open-template-settings',
-			name: '打开模板设置',
-			icon: 'settings',
-			checkCallback: (checking: boolean) => {
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (!markdownView) {
-					return false;
-				}
-
-				if (!checking) {
-					this.openSettings();
-				}
-
-				return true;
-			},
-		});
-
-		this.addCommand({
-			id: 'insert-visual-template',
-			name: '插入可视化模板',
-			icon: 'layout-template',
-			callback: () => {
-				new TemplateSelectorModal(this.app, this).open();
-			},
-		});
-	}
-
-	private registerSettingTab(): void {
-		this.addSettingTab(new FastTemplaterSettingTab(this.app, this, this.settingsManager, this.presetManager));
-	}
-
-	private getDefaultSaveOptions(): SaveSettingsOptions {
-		const options: SaveSettingsOptions = {};
-
-		if (this.updateStatusBar) {
-			options.onAfterSave = this.updateStatusBar;
-		}
-
-		if (this.templateManager) {
-			options.reloadTemplates = () => this.templateManager.loadTemplates();
-		}
-
-		return options;
 	}
 }

@@ -4,7 +4,9 @@ import { TemplateManager } from '@templates';
 import { TemplateLoadStatus } from '@types';
 import type { Template, TemplateLoadResult } from '@types';
 import * as TemplateEngine from '@engine';
+import { ObsidianTemplaterAdapter } from '@engine';
 import { FrontmatterManagerModal } from './frontmatter-manager-modal';
+import { renderStatusBlock } from './ui-utils';
 
 export class TemplateSelectorModal extends Modal {
 	private readonly plugin: FastTemplater;
@@ -139,41 +141,43 @@ export class TemplateSelectorModal extends Modal {
 
 	/**
 	 * 渲染增强的状态消息容器
+	 * 使用统一的 renderStatusBlock 工具
 	 */
 	private renderStatusContainer(containerEl: HTMLElement, status: {
 		icon: string;
 		title: string;
 		message: string;
-		actions?: Array<{ text: string; action: () => void; primary?: boolean }>;
+		actions?: Array<{
+			text: string;
+			action: () => void | Promise<unknown>;
+			primary?: boolean;
+			busyText?: string;
+		}>;
 	}) {
-		// 创建状态容器
-		const statusContainer = containerEl.createDiv('fast-templater-status-container');
-
-		// 图标和标题
-		const headerEl = statusContainer.createDiv('fast-templater-status-header');
-		headerEl.createEl('div', { text: status.icon, cls: 'fast-templater-status-icon' });
-		headerEl.createEl('h3', { text: status.title, cls: 'fast-templater-status-title' });
-
-		// 消息
-		statusContainer.createEl('p', { text: status.message, cls: 'fast-templater-status-message' });
-
-		// 操作按钮
-		if (status.actions && status.actions.length > 0) {
-			const actionsContainer = statusContainer.createDiv('fast-templater-status-actions');
-			status.actions.forEach(action => {
-				const btn = actionsContainer.createEl('button', {
-					text: action.text,
-					cls: action.primary ? 'mod-cta' : ''
-				});
-				btn.onclick = action.action;
-			});
-		}
+		renderStatusBlock(containerEl, {
+			icon: status.icon,
+			title: status.title,
+			items: [
+				{
+					label: '',
+					content: status.message,
+					type: 'text'
+				}
+			],
+			actions: status.actions?.map(action => ({
+				text: action.text,
+				onClick: action.action,
+				cls: action.primary ? 'mod-cta' : '',
+				busyText: action.busyText
+			})),
+			containerClass: 'fast-templater-status-container'
+		});
 	}
 
 	/**
 	 * 获取错误状态信息
 	 */
-	private getErrorStatusInfo(): { icon: string; title: string; message: string; actions?: Array<{ text: string; action: () => void; primary?: boolean }> } | null {
+	private getErrorStatusInfo(): { icon: string; title: string; message: string; actions?: Array<{ text: string; action: () => void | Promise<unknown>; primary?: boolean; busyText?: string }> } | null {
 		if (!this.templateLoadStatus || this.templateLoadStatus.status === TemplateLoadStatus.SUCCESS) {
 			return null;
 		}
@@ -181,7 +185,7 @@ export class TemplateSelectorModal extends Modal {
 		const status = this.templateLoadStatus.status;
 		const openSettings = () => this.openPluginSettings();
 
-		const retryScan = () => this.reloadTemplatesWithFeedback();
+		const retryScan = async () => await this.reloadTemplatesWithFeedback();
 
 		switch (status) {
 			case TemplateLoadStatus.ERROR: {
@@ -203,7 +207,7 @@ export class TemplateSelectorModal extends Modal {
 						message: '指定的模板文件夹路径无效或不存在，请检查路径设置。',
 						actions: [
 							{ text: '修正路径', action: openSettings, primary: true },
-							{ text: '重新扫描', action: retryScan }
+							{ text: '重新扫描', action: retryScan, busyText: '扫描中...' }
 						]
 					};
 				} else {
@@ -212,7 +216,7 @@ export class TemplateSelectorModal extends Modal {
 						title: '加载失败',
 						message: '加载模板时发生错误，请稍后重试或检查设置。',
 						actions: [
-							{ text: '重新扫描', action: retryScan, primary: true },
+							{ text: '重新扫描', action: retryScan, primary: true, busyText: '扫描中...' },
 							{ text: '检查设置', action: openSettings }
 						]
 					};
@@ -255,7 +259,7 @@ export class TemplateSelectorModal extends Modal {
 			title: '暂无可用模板',
 			message: '未找到可用模板，请检查模板文件夹设置。',
 			actions: [
-				{ text: '重新扫描', action: () => this.reloadTemplatesWithFeedback() },
+				{ text: '重新扫描', action: async () => await this.reloadTemplatesWithFeedback(), busyText: '扫描中...' },
 				{ text: '打开设置', action: () => this.openPluginSettings() }
 			]
 		};
@@ -362,32 +366,17 @@ export class TemplateSelectorModal extends Modal {
 	/**
 	 * 重新加载模板并提供用户反馈（辅助方法）
 	 * 此方法统一处理UI反馈逻辑：
-	 * 1. 禁用搜索输入框并添加加载状态样式
-	 * 2. 调用插件的 reloadTemplates 方法重新加载模板（启用通知）
-	 * 3. 更新内部模板数据和UI显示
-	 * 4. 恢复搜索输入框状态并重新聚焦
+	 * 1. 调用插件的 reloadTemplates 方法重新加载模板（启用通知）
+	 * 2. 更新内部模板数据和UI显示
 	 * @returns Promise<TemplateLoadResult> 模板加载结果
 	 */
 	private async reloadTemplatesWithFeedback(): Promise<TemplateLoadResult> {
-		const searchInputEl = this.contentEl.querySelector('.fast-templater-search-input') as HTMLInputElement;
-		if (searchInputEl) {
-			searchInputEl.disabled = true;
-			searchInputEl.classList.add('fast-templater-search-loading');
-		}
-
 		// 调用插件方法并启用通知
 		const result = await this.templateManager.reloadTemplates(true);
 		this.templates = this.templateManager.getTemplates();
 		this.filteredTemplates = [...this.templates];
 		this.templateLoadStatus = result;
 		this.updateTemplateList();
-
-		if (searchInputEl) {
-			searchInputEl.disabled = false;
-			searchInputEl.classList.remove('fast-templater-search-loading');
-			searchInputEl.focus();
-		}
-
 		return result;
 	}
 
@@ -586,9 +575,10 @@ export class TemplateSelectorModal extends Modal {
 		editor.replaceSelection(processedContent);
 
 		// 3. 根据处理结果显示相应的通知
+		const templater = new ObsidianTemplaterAdapter(this.app);
 		if (usedTemplater) {
 			new Notice(`模板 "${template.name}" 已插入并使用 Templater 处理。`);
-		} else if (this.plugin.settings.enableTemplaterIntegration && !TemplateEngine.isTemplaterEnabled(this.app)) {
+		} else if (this.plugin.settings.enableTemplaterIntegration && !templater.isAvailable()) {
 			new Notice(`模板 "${template.name}" 已插入(未检测到 Templater 插件)。`);
 		} else if (error) {
 			new Notice(`模板 "${template.name}" 已插入(${error})。`);

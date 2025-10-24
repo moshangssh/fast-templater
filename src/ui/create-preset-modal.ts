@@ -1,5 +1,6 @@
 import { App, Modal, Notice } from 'obsidian';
 import { PresetManager } from '@presets';
+import { withUiNotice } from './ui-utils';
 export class CreatePresetModal extends Modal {
 	private readonly presetManager: PresetManager;
 	private nameInput: HTMLInputElement;
@@ -142,20 +143,18 @@ export class CreatePresetModal extends Modal {
 			return;
 		}
 
-		try {
-			// 创建新的预设对象
-			const newPreset = await this.presetManager.createPreset({
-				name: nameValue
-			});
-
-			new Notice(`✅ 已创建预设 "${nameValue}" (ID: ${newPreset.id})`);
-			this.close();
-
-			this.onPresetsChanged?.();
-		} catch (error) {
-			console.error('Fast Templater: 创建预设失败', error);
-			new Notice('❌ 创建预设失败');
-		}
+		// 使用 withUiNotice 工具函数简化创建流程
+		await withUiNotice(
+			async () => await this.presetManager.createPreset({ name: nameValue }),
+			{
+				success: (newPreset) => `✅ 已创建预设 "${nameValue}" (ID: ${newPreset.id})`,
+				fail: '❌ 创建预设失败',
+				onSuccess: () => {
+					this.close();
+					this.onPresetsChanged?.();
+				}
+			}
+		);
 	}
 
 	onClose() {

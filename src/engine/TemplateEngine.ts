@@ -1,111 +1,37 @@
 import { App, Editor, MarkdownView } from 'obsidian';
 import * as yaml from 'js-yaml';
-import { TEMPLATER_DYNAMIC_MODE } from '@core/constants';
 import type FastTemplater from '@core/plugin';
-import type { FrontmatterPreset, Pos, Template, TemplaterPlugin } from '@types';
-
-export interface TemplateProcessingResult {
-	content: string;
-	usedTemplater: boolean;
-	error?: string;
-}
-
-export interface ParsedTemplateContent {
-	frontmatter: Record<string, unknown>;
-	body: string;
-}
-
-export interface TemplateInsertionResult {
-	usedTemplater: boolean;
-	templaterError?: string;
-	mergedFrontmatter: Record<string, unknown>;
-	mergeCount: number;
-	frontmatterUpdated: boolean;
-	templateBodyInserted: boolean;
-	fallbackToBodyOnly: boolean;
-}
-
-export interface NoteMetadata {
-	frontmatter: Record<string, unknown>;
-	position: Pos | null;
-}
+import type {
+	FrontmatterPreset,
+	NoteMetadata,
+	ParsedTemplateContent,
+	Pos,
+	Template,
+	TemplateInsertionResult,
+	TemplateProcessingResult
+} from '@types';
+import type { TemplaterPort } from './TemplaterPort';
+import { ObsidianTemplaterAdapter } from './ObsidianTemplaterAdapter';
 
 export async function processTemplateContent(app: App, plugin: FastTemplater, template: Template): Promise<TemplateProcessingResult> {
 	let processedContent = template.content;
 	let usedTemplater = false;
 	let error: string | undefined;
 
-	if (plugin.settings.enableTemplaterIntegration && isTemplaterEnabled(app)) {
-		try {
-			processedContent = await runTemplater(app, template);
-			usedTemplater = true;
-		} catch (templaterError) {
-			console.warn('Fast Templater: Templater 处理失败，使用原始模板内容', templaterError);
-			error = 'Templater 处理失败，使用原始模板内容';
+	if (plugin.settings.enableTemplaterIntegration) {
+		const templater: TemplaterPort = new ObsidianTemplaterAdapter(app);
+		if (templater.isAvailable()) {
+			try {
+				processedContent = await templater.processTemplate(template);
+				usedTemplater = true;
+			} catch (templaterError) {
+				console.warn('Fast Templater: Templater 处理失败，使用原始模板内容', templaterError);
+				error = 'Templater 处理失败，使用原始模板内容';
+			}
 		}
 	}
 
 	return { content: processedContent, usedTemplater, error };
-}
-
-/**
- * 注意：Templater 暂未公开稳定的插件对插件 API。此处调用依赖其插件实例上的内部实现，
- * 因此必须在运行时做特性检测，避免在上游变更时直接崩溃。
- */
-export async function runTemplater(app: App, template: Template): Promise<string> {
-	try {
-		const templater = getTemplaterPlugin(app);
-
-		if (!templater) {
-			throw new Error('Templater 插件未启用');
-		}
-
-		if (templater.templater && typeof templater.templater.parse_template === 'function') {
-			const activeFile = app.workspace.getActiveFile();
-
-			if (!activeFile) {
-				throw new Error('无法获取当前活动文件');
-			}
-
-			// 如果没有路径，说明是直接解析内容字符串（如 frontmatter 默认值）
-			if (!template.path || template.path === '') {
-				const config = {
-					target_file: activeFile,
-					run_mode: TEMPLATER_DYNAMIC_MODE,
-					active_file: activeFile
-				};
-
-				return await templater.templater.parse_template(config, template.content);
-			}
-
-			// 有路径的情况，使用文件方式解析
-			if (typeof templater.templater.read_and_parse_template === 'function') {
-				const abstractFile = app.vault.getAbstractFileByPath(template.path);
-
-				if (abstractFile && 'extension' in abstractFile && abstractFile.extension === 'md') {
-					const templateFile = abstractFile;
-
-					const config = {
-						template_file: templateFile,
-						target_file: activeFile,
-						run_mode: TEMPLATER_DYNAMIC_MODE,
-						active_file: activeFile
-					};
-
-					return await templater.templater.read_and_parse_template(config);
-				} else {
-					throw new Error('无法获取有效的 TFile 对象');
-				}
-			} else {
-				throw new Error('Templater API 不可用');
-			}
-		} else {
-			throw new Error('Templater API 不可用');
-		}
-	} catch (error) {
-		console.warn('Fast Templater: Templater 处理失败', error);
-		throw error;
-	}
 }
 
 export function parseTemplateContent(content: string): ParsedTemplateContent {
@@ -323,16 +249,6 @@ export function updateNoteFrontmatter(editor: Editor, newFrontmatter: Record<str
 	}
 }
 
-export function isTemplaterEnabled(app: App): boolean {
-	const templater = getTemplaterPlugin(app);
-
-	return Boolean(
-		templater &&
-		templater.templater &&
-		typeof templater.templater.read_and_parse_template === 'function',
-	);
-}
-
 function extractPresetDefaults(preset: FrontmatterPreset): Record<string, unknown> {
 	const defaults: Record<string, unknown> = {};
 
@@ -349,63 +265,4 @@ function extractPresetDefaults(preset: FrontmatterPreset): Record<string, unknow
 	});
 
 	return defaults;
-}
-
-type PluginManagerLike = {
-	getPlugin?: <T>(pluginId: string) => T | null | undefined;
-	plugins?: Record<string, unknown>;
-};
-
-function resolvePluginManager(app: App): PluginManagerLike | null {
-	const pluginManager = (app as App & { plugins?: PluginManagerLike }).plugins;
-
-	if (!pluginManager || typeof pluginManager !== 'object') {
-		return null;
-	}
-
-	return pluginManager;
-}
-
-function getTemplaterPlugin(app: App): TemplaterPlugin | null {
-	const pluginManager = resolvePluginManager(app);
-
-	if (!pluginManager || typeof pluginManager.getPlugin !== 'function') {
-		return getTemplaterFromRegistry(pluginManager);
-	}
-
-	const plugin = pluginManager.getPlugin<TemplaterPlugin>('templater-obsidian') ?? getTemplaterFromRegistry(pluginManager);
-
-	if (plugin && isValidTemplaterPlugin(plugin)) {
-		return plugin;
-	}
-
-	return null;
-}
-
-function getTemplaterFromRegistry(pluginManager: PluginManagerLike | null): TemplaterPlugin | null {
-	if (!pluginManager || !pluginManager.plugins || typeof pluginManager.plugins !== 'object') {
-		return null;
-	}
-
-	const registryPlugin = pluginManager.plugins['templater-obsidian'];
-
-	if (registryPlugin && typeof registryPlugin === 'object' && isValidTemplaterPlugin(registryPlugin as TemplaterPlugin)) {
-		return registryPlugin as TemplaterPlugin;
-	}
-
-	return null;
-}
-
-function isValidTemplaterPlugin(plugin: TemplaterPlugin | null | undefined): plugin is TemplaterPlugin {
-	if (!plugin || typeof plugin !== 'object') {
-		return false;
-	}
-
-	const templaterApi = plugin.templater;
-
-	return Boolean(
-		templaterApi &&
-		typeof templaterApi === 'object' &&
-		typeof templaterApi.read_and_parse_template === 'function',
-	);
 }

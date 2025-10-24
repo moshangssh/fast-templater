@@ -13,14 +13,3 @@ export interface TemplaterPlugin extends Plugin {
 		parse_template(config: unknown, template_content: string): Promise<string>;
 	};
 }
-
-export interface Loc {
-	line: number;
-	col: number;
-	offset: number;
-}
-
-export interface Pos {
-	start: Loc;
-	end: Loc;
-}
