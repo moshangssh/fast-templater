@@ -317,7 +317,7 @@ export async function withProgressNotice<T>(
  *     await templateManager.reloadTemplates(true);
  *   },
  *   {
- *     busyText: '扫描中...',
+ *     busyText: '扫描中…',
  *     onComplete: () => this.refreshUI()
  *   }
  * );
@@ -517,7 +517,7 @@ export function withBusyInput<T>(
  *     {
  *       text: '重新扫描',
  *       onClick: async () => await templateManager.reloadTemplates(true),
- *       busyText: '扫描中...',
+ *       busyText: '扫描中…',
  *       cls: 'mod-cta'
  *     },
  *     {
@@ -602,7 +602,7 @@ export function renderStatusBlock(containerEl: HTMLElement, config: {
 
 	// 操作按钮区域
 	if (config.actions && config.actions.length > 0) {
-		const actionsEl = statusEl.createDiv('fast-templater-status-block__actions');
+		const actionsEl = statusEl.createDiv('fast-templater-actions');
 		config.actions.forEach(action => {
 			const button = actionsEl.createEl('button', {
 				text: action.text,

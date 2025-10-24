@@ -207,7 +207,7 @@ export class TemplateSelectorModal extends Modal {
 						message: '指定的模板文件夹路径无效或不存在，请检查路径设置。',
 						actions: [
 							{ text: '修正路径', action: openSettings, primary: true },
-							{ text: '重新扫描', action: retryScan, busyText: '扫描中...' }
+							{ text: '重新扫描', action: retryScan, busyText: '扫描中…' }
 						]
 					};
 				} else {
@@ -216,7 +216,7 @@ export class TemplateSelectorModal extends Modal {
 						title: '加载失败',
 						message: '加载模板时发生错误，请稍后重试或检查设置。',
 						actions: [
-							{ text: '重新扫描', action: retryScan, primary: true, busyText: '扫描中...' },
+							{ text: '重新扫描', action: retryScan, primary: true, busyText: '扫描中…' },
 							{ text: '检查设置', action: openSettings }
 						]
 					};
@@ -259,7 +259,7 @@ export class TemplateSelectorModal extends Modal {
 			title: '暂无可用模板',
 			message: '未找到可用模板，请检查模板文件夹设置。',
 			actions: [
-				{ text: '重新扫描', action: async () => await this.reloadTemplatesWithFeedback(), busyText: '扫描中...' },
+				{ text: '重新扫描', action: async () => await this.reloadTemplatesWithFeedback(), busyText: '扫描中…' },
 				{ text: '打开设置', action: () => this.openPluginSettings() }
 			]
 		};
@@ -468,6 +468,7 @@ export class TemplateSelectorModal extends Modal {
 			if (preset) {
 				// 打开 Frontmatter 管理模态窗口
 				new FrontmatterManagerModal(this.app, this.plugin, template, preset).open();
+				this.close();
 				return; // 阻止原有的插入逻辑
 			} else {
 				// 预设不存在，显示警告并回退到原有逻辑

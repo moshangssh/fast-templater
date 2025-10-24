@@ -179,17 +179,7 @@ export class PresetManager {
 		preset.fields.forEach((field) => {
 			const value = formData[field.key];
 
-			if (field.type !== 'multi-select') {
-				if (!value || (typeof value === 'string' && value.trim() === '')) {
-					errors.push(`字段 "${field.label}" 不能为空`);
-				}
-			} else {
-				if (!Array.isArray(value) || value.length === 0) {
-					errors.push(`字段 "${field.label}" 至少需要选择一个选项`);
-				}
-			}
-
-			if (field.type === 'date' && value) {
+			if (field.type === 'date' && value && (typeof value === 'string' && value.trim() !== '')) {
 				const date = new Date(value as string);
 				if (isNaN(date.getTime())) {
 					errors.push(`字段 "${field.label}" 的日期格式无效`);

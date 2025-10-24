@@ -177,7 +177,7 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 							statusEl.replaceWith(newStatusEl);
 						}
 					},
-					busyText: '扫描中...',
+					busyText: '扫描中…',
 					cls: 'mod-cta'
 				}
 			] : undefined
@@ -267,7 +267,7 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 						}
 					},
 					{
-						busyText: '验证中...',
+						busyText: '验证中…',
 						linkedInputs: [text.inputEl]
 					}
 				);

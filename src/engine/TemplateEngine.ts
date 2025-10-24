@@ -81,6 +81,7 @@ export function convertFormDataToFrontmatter(
 		const value = formData[field.key];
 
 		if (value === undefined || value === null || value === '') {
+			frontmatter[field.key] = '';
 			return;
 		}
 
@@ -98,6 +99,8 @@ export function convertFormDataToFrontmatter(
 			case 'multi-select': {
 				if (Array.isArray(value) && value.length > 0) {
 					frontmatter[field.key] = value;
+				} else {
+					frontmatter[field.key] = '';
 				}
 				break;
 			}
@@ -107,9 +110,7 @@ export function convertFormDataToFrontmatter(
 			default: {
 				if (typeof value === 'string') {
 					const trimmedValue = value.trim();
-					if (trimmedValue) {
-						frontmatter[field.key] = trimmedValue;
-					}
+					frontmatter[field.key] = trimmedValue || '';
 				} else {
 					frontmatter[field.key] = value;
 				}
