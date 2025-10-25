@@ -1,8 +1,10 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal } from 'obsidian';
 import type FastTemplater from '@core/plugin';
-import type { FrontmatterPreset, Template } from '@types';
+import type { FrontmatterPreset, Template, TemplateInsertionResult } from '@types';
 import * as TemplateEngine from '@engine';
 import { ObsidianTemplaterAdapter } from '@engine';
+import { handleError } from '@core/error';
+import { notifyInfo, notifySuccess, notifyWarning } from '@utils/notify';
 
 export class FrontmatterManagerModal extends Modal {
 	private plugin: FastTemplater;
@@ -72,7 +74,10 @@ export class FrontmatterManagerModal extends Modal {
 			this.renderFormFields(formContainer);
 			confirmBtn.disabled = false;
 		}).catch((error) => {
-			console.error('Fast Templater: 默认值解析失败', error);
+			handleError(error, {
+				context: 'FrontmatterManagerModal.parseTemplaterDefaults',
+			});
+			notifyWarning('部分默认值解析失败，已使用原始字段默认值。');
 			this.isResolving = false;
 			this.renderFormFields(formContainer);
 			confirmBtn.disabled = false;
@@ -288,73 +293,75 @@ export class FrontmatterManagerModal extends Modal {
 		this.close();
 	}
 
+	private notifyValidationFailure(errors: string[]): void {
+		notifyWarning(`表单验证失败:\n${errors.join('\n')}`, { prefix: false });
+	}
+
+	private handleInsertionResult(result: TemplateInsertionResult): void {
+		if (result.templaterError) {
+			notifyWarning(`${result.templaterError}，将使用原始模板内容进行插入`);
+		}
+
+		if (result.fallbackToBodyOnly) {
+			notifyWarning('Frontmatter 更新失败，已插入模板正文内容。');
+			return;
+		}
+
+		const details: string[] = [];
+		if (result.usedTemplater) {
+			details.push('并使用 Templater 处理');
+		}
+		if (result.mergeCount > 0) {
+			details.push(`已合并 ${result.mergeCount} 个 frontmatter 字段`);
+		}
+
+		const suffix = details.length > 0 ? `（${details.join('，')}）` : '';
+		notifySuccess(`模板 "${this.template.name}" 已插入${suffix}。`);
+	}
+
+	private handleInsertionFailure(error: unknown): void {
+		const normalizedError = handleError(error, {
+			context: 'FrontmatterManagerModal.handleConfirm',
+			userMessage: '插入模板失败，请稍后重试。',
+		});
+
+		const message = normalizedError.message || '';
+		if (message.includes('编辑器')) {
+			notifyInfo('提示：请确保在 Markdown 文件中使用此功能');
+		} else if (message.includes('Templater')) {
+			notifyInfo('提示：可以尝试禁用 Templater 集成后重试');
+		}
+	}
+
 	/**
 	 * 处理确认按钮点击事件 - 核心逻辑实现
 	 * Task 1: 表单数据收集和预处理
 	 * Task 2-6: 完整的模板插入流程
 	 */
 	private async handleConfirm(): Promise<void> {
+		this.collectMultiSelectData();
+
+		const validation = this.plugin.presetManager.validateFormData(this.preset, this.formData);
+		if (!validation.isValid) {
+			this.notifyValidationFailure(validation.errors);
+			return;
+		}
+
 		try {
-			// Subtask 1.1: 收集多选框数据
-			this.collectMultiSelectData();
-
-			// Subtask 1.2: 验证表单数据
-			const validation = this.plugin.presetManager.validateFormData(this.preset, this.formData);
-			if (!validation.isValid) {
-				new Notice(`表单验证失败:\n${validation.errors.join('\n')}`);
-				return;
-			}
-
-			// Subtask 1.3: 转换表单数据为 Frontmatter 格式
 			const userFrontmatter = TemplateEngine.convertFormDataToFrontmatter(this.preset, this.formData);
-
-			// 执行完整的模板插入流程
 			const result = await TemplateEngine.insertTemplateWithUserInput(
 				this.app,
 				this.plugin,
 				this.template,
 				this.preset,
-				userFrontmatter
+				userFrontmatter,
 			);
 
-			// 有 Templater 警告时展示提示
-			if (result.templaterError) {
-				new Notice(`${result.templaterError}，将使用原始模板内容进行插入`);
-			}
-
-			if (result.fallbackToBodyOnly) {
-				new Notice('Frontmatter 更新失败，尝试仅插入模板内容');
-				new Notice('已插入模板内容（Frontmatter 更新失败）');
-			} else {
-				const templaterInfo = result.usedTemplater ? '并使用 Templater 处理' : '';
-				const mergeInfo = result.mergeCount > 0 ? `已合并 ${result.mergeCount} 个 frontmatter 字段` : '';
-
-				let successMessage = `模板 "${this.template.name}" 已插入`;
-				if (templaterInfo || mergeInfo) {
-					successMessage += `（${templaterInfo}${templaterInfo && mergeInfo ? '，' : ''}${mergeInfo}）`;
-				}
-				successMessage += '。';
-
-				new Notice(successMessage);
-			}
-
-			// Task 6.2: 操作完成后关闭模态窗口
+			this.handleInsertionResult(result);
+			await this.plugin.addRecentTemplate(this.template.id);
 			this.close();
-
 		} catch (error) {
-			console.error('Fast Templater: 处理确认操作失败', error);
-
-			// Task 4: 错误处理机制
-			const errorMessage = error instanceof Error ? error.message : '未知错误';
-			new Notice(`插入模板失败: ${errorMessage}`);
-
-			// Task 4.4: 用户友好的错误通知系统
-			// 提供回退建议
-			if (errorMessage.includes('编辑器')) {
-				new Notice('提示：请确保在 Markdown 文件中使用此功能');
-			} else if (errorMessage.includes('Templater')) {
-				new Notice('提示：可以尝试禁用 Templater 集成后重试');
-			}
+			this.handleInsertionFailure(error);
 		}
 	}
 

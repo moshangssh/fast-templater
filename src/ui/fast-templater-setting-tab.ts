@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting } from 'obsidian';
 import type FastTemplater from '@core/plugin';
 import { SettingsManager } from '@settings';
 import { PresetManager } from '@presets';
@@ -7,7 +7,9 @@ import type { FastTemplaterSettings, FrontmatterPreset } from '@types';
 import { FieldConfigModal } from './field-config-modal';
 import { CreatePresetModal } from './create-preset-modal';
 import { renderPresetListUI } from './preset-item-ui';
-import { withUiNotice, confirmAndDelete, withBusyButton, renderStatusBlock } from './ui-utils';
+import { withUiNotice, confirmAndDelete, renderStatusBlock } from './ui-utils';
+import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '@utils/notify';
+import { withBusy } from '@utils/async-ui';
 
 export class FastTemplaterSettingTab extends PluginSettingTab {
 	plugin: FastTemplater;
@@ -244,8 +246,8 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 					type: 'button'
 				});
 
-				// 使用 withBusyButton 统一处理异步操作
-				withBusyButton(
+				// 使用统一的 withBusy 工具处理异步操作和忙态
+				withBusy(
 					verifyButton,
 					async () => {
 						// 立即获取输入框的当前值，确保验证的是最新的路径
@@ -261,14 +263,15 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 						// 验证保存后的路径
 						const isValid = await this.plugin.templateManager.validateTemplatePath(cleanPath);
 						if (isValid) {
-							new Notice(`路径 "${cleanPath}" 有效，已找到模板文件`);
+							notifySuccess(`路径 "${cleanPath}" 有效，已找到模板文件`);
 						} else {
-							new Notice(`路径 "${cleanPath}" 未找到模板文件`);
+							notifyWarning(`路径 "${cleanPath}" 未找到模板文件`);
 						}
 					},
 					{
 						busyText: '验证中…',
-						linkedInputs: [text.inputEl]
+						linkedTargets: [text.inputEl],
+						errorContext: 'SettingTab.verifyPath'
 					}
 				);
 
@@ -281,7 +284,7 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 
 					// 提供用户反馈（只在路径确实发生变化时）
 					if (cleanPath && cleanPath !== oldPath) {
-						new Notice(`模板路径已更新为: ${cleanPath}`);
+						notifySuccess(`模板路径已更新为: ${cleanPath}`);
 					}
 				});
 			});
@@ -302,7 +305,7 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 						templaterStatusEl.replaceWith(newStatusEl);
 						templaterStatusEl = newStatusEl;
 					}
-					new Notice(value ? '已启用 Templater 集成' : '已禁用 Templater 集成');
+					notifyInfo(value ? '已启用 Templater 集成' : '已禁用 Templater 集成');
 				})
 			);
 
@@ -318,7 +321,7 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.settings.enableFrontmatterMerge = value;
 					await this.persistSettings();
-					new Notice(value ? '已启用智能 Frontmatter 合并' : '已禁用智能 Frontmatter 合并');
+					notifyInfo(value ? '已启用智能 Frontmatter 合并' : '已禁用智能 Frontmatter 合并');
 				})
 			);
 
@@ -418,7 +421,7 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 	private async deletePreset(presetId: string): Promise<void> {
 		const preset = this.presetManager.getPresetById(presetId);
 		if (!preset) {
-			new Notice(`未找到 ID 为 "${presetId}" 的预设`);
+			notifyError(`未找到 ID 为 "${presetId}" 的预设`);
 			return;
 		}
 

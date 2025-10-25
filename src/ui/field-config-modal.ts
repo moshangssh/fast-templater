@@ -1,7 +1,8 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal } from 'obsidian';
 import type { FrontmatterField, FrontmatterPreset } from '@types';
 import { PresetManager } from '@presets';
 import { validateAndSave } from './ui-utils';
+import { notifyWarning } from '@utils/notify';
 
 export class FieldConfigModal extends Modal {
 	private readonly presetManager: PresetManager;
@@ -554,7 +555,7 @@ export class FieldConfigModal extends Modal {
 		// 验证字段数据
 		const validation = this.validateFields();
 		if (!validation.isValid) {
-			new Notice(`验证失败:\n${validation.errors.join('\n')}`);
+			notifyWarning(`验证失败:\n${validation.errors.join('\n')}`, { prefix: false });
 			return;
 		}
 

@@ -19,6 +19,7 @@ export interface FastTemplaterSettings {
 	enableTemplaterIntegration: boolean;
 	enableFrontmatterMerge: boolean;
 	frontmatterPresets: FrontmatterPreset[];
+	recentlyUsedTemplates: string[]; // <-- 新增此行
 }
 
 export const DEFAULT_SETTINGS: FastTemplaterSettings = {
@@ -26,4 +27,5 @@ export const DEFAULT_SETTINGS: FastTemplaterSettings = {
 	enableTemplaterIntegration: true,
 	enableFrontmatterMerge: true,
 	frontmatterPresets: [],
+	recentlyUsedTemplates: [], // <-- 新增此行
 };

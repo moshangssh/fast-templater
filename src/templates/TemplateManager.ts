@@ -1,6 +1,8 @@
-import { Notice, type App, TFile } from "obsidian";
+import { type App, TFile } from "obsidian";
+import { handleError } from "@core/error";
 import type { FastTemplaterSettings, Template, TemplateLoadResult } from "@types";
 import { TemplateLoadStatus } from "@types";
+import { notifyError, notifySuccess, notifyWarning } from "@utils/notify";
 
 type SettingsResolver = () => FastTemplaterSettings;
 
@@ -135,15 +137,16 @@ export class TemplateManager {
 
 			return this.loadResult;
 		} catch (error) {
-			const errorMessage = "Fast Templater: 加载模板失败";
+			const normalizedError = handleError(error, {
+				context: "TemplateManager.loadTemplates",
+				userMessage: "加载模板失败，请检查模板文件夹设置",
+			});
 			this.loadResult = {
 				status: TemplateLoadStatus.ERROR,
 				count: 0,
-				message: errorMessage,
-				error: error as Error,
+				message: "加载模板失败，请检查模板文件夹设置",
+				error: normalizedError,
 			};
-			console.error(errorMessage, error);
-			new Notice(`${errorMessage}，请检查模板文件夹设置`);
 			return this.loadResult;
 		}
 	}
@@ -155,9 +158,11 @@ export class TemplateManager {
 		const result = await this.loadTemplates();
 		if (showNotice) {
 			if (result.status === TemplateLoadStatus.SUCCESS) {
-				new Notice(`✅ ${result.message}`);
+				notifySuccess(result.message ?? "模板加载完成");
+			} else if (result.status === TemplateLoadStatus.ERROR) {
+				notifyError(result.message ?? "模板加载失败");
 			} else {
-				new Notice(`⚠️ ${result.message}`);
+				notifyWarning(result.message ?? "模板状态更新");
 			}
 		}
 		return result;

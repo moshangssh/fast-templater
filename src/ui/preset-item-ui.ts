@@ -1,4 +1,4 @@
-import { Notice } from 'obsidian';
+import { notifyWarning } from '@utils/notify';
 import type { FrontmatterPreset } from '@types';
 
 export interface RenderPresetItemContext {
@@ -111,14 +111,14 @@ export function renderPresetItemUI(
 		deleteButtonEl.disabled = true;
 	}
 
-	if (callbacks?.onRename && !disableNameInput) {
-		nameInputEl.addEventListener('change', async () => {
-			const newName = nameInputEl.value.trim();
-			if (!newName) {
-				nameInputEl.value = preset.name;
-				new Notice('预设名称不能为空');
-				return;
-			}
+		if (callbacks?.onRename && !disableNameInput) {
+			nameInputEl.addEventListener('change', async () => {
+				const newName = nameInputEl.value.trim();
+				if (!newName) {
+					nameInputEl.value = preset.name;
+					notifyWarning('预设名称不能为空');
+					return;
+				}
 
 			if (newName === preset.name) {
 				nameInputEl.value = preset.name;

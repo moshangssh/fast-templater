@@ -214,6 +214,25 @@ Fast Templater - Obsidian Native Style
 }
 
 
+/* ========================================
+   模板列表分区标题样式
+   ======================================== */
+
+.fast-templater-list-header {
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-semibold);
+    color: var(--text-muted);
+    margin: 24px 0 10px 4px; /* 第一个标题的上边距较大 */
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.fast-templater-list-header:first-of-type {
+    margin-top: 0;
+}
+
 /* 搜索无结果时的特殊样式 */
 .fast-templater-status-container.fast-templater-no-results .fast-templater-status-icon {
 	color: var(--text-accent);

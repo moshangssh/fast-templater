@@ -1,5 +1,5 @@
-import { Notice } from "obsidian";
 import type FastTemplater from "@core/plugin";
+import { handleError } from "@core/error";
 import { DEFAULT_SETTINGS } from "@types";
 import type {
 	FastTemplaterSettings,
@@ -34,8 +34,10 @@ export class SettingsManager {
 			const rawData = await this.plugin.loadData();
 			this.settings = this.normalizeSettings(rawData as PartialSettings);
 		} catch (error) {
-			console.error("Fast Templater: 加载设置失败", error);
-			new Notice("Fast Templater: 加载设置失败，使用默认设置");
+			handleError(error, {
+				context: "SettingsManager.load",
+				userMessage: "Fast Templater: 加载设置失败，使用默认设置",
+			});
 			this.settings = { ...DEFAULT_SETTINGS };
 		}
 
@@ -53,8 +55,10 @@ export class SettingsManager {
 				await options.reloadTemplates();
 			}
 		} catch (error) {
-			console.error("Fast Templater: 保存设置失败", error);
-			new Notice("Fast Templater: 保存设置失败");
+			handleError(error, {
+				context: "SettingsManager.save",
+				userMessage: "Fast Templater: 保存设置失败",
+			});
 		}
 
 		return this.settings;
@@ -149,6 +153,7 @@ export class SettingsManager {
 					...(Array.isArray(field.options) && field.options.length > 0 ? { options: field.options } : {}),
 				})),
 			})),
+			recentlyUsedTemplates: settings.recentlyUsedTemplates,
 		};
 	}
 }

@@ -1,4 +1,4 @@
-import { App, Component, Editor, MarkdownRenderer, MarkdownView, Modal, Notice } from 'obsidian';
+import { App, Component, Editor, MarkdownRenderer, MarkdownView, Modal } from 'obsidian';
 import type FastTemplater from '@core/plugin';
 import { TemplateManager } from '@templates';
 import { TemplateLoadStatus } from '@types';
@@ -7,6 +7,9 @@ import * as TemplateEngine from '@engine';
 import { ObsidianTemplaterAdapter } from '@engine';
 import { FrontmatterManagerModal } from './frontmatter-manager-modal';
 import { renderStatusBlock } from './ui-utils';
+import { debounce } from '@utils/timing';
+import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '@utils/notify';
+import { handleError } from '@core/error';
 
 export class TemplateSelectorModal extends Modal {
 	private readonly plugin: FastTemplater;
@@ -14,10 +17,10 @@ export class TemplateSelectorModal extends Modal {
 	private templates: Template[];
 	private searchQuery = ''; // 搜索查询字符串
 	private filteredTemplates: Template[] = []; // 过滤后的模板列表
-	private searchDebounceTimer: number | null = null; // 防抖定时器
+	private readonly scheduleSearchUpdate = debounce((query: string) => this.applySearchUpdate(query), 300); // 搜索防抖
 	private selectedTemplate: Template | null = null; // 当前选中的模板
 	private previewContainer: HTMLElement | null = null; // 预览容器引用
-	private previewDebounceTimer: number | null = null; // 预览防抖定时器
+	private readonly schedulePreviewUpdate = debounce((template: Template | null) => this.updatePreview(template), 200); // 预览防抖
 	private templateLoadStatus: TemplateLoadResult; // 模板加载状态
 	private activeIndex = 0; // 用于键盘导航
 	private listEl: HTMLElement | null = null; // 模板列表元素
@@ -52,6 +55,14 @@ export class TemplateSelectorModal extends Modal {
 	}
 
 	/**
+	 * 触发搜索结果刷新
+	 */
+	private applySearchUpdate(query: string) {
+		this.filteredTemplates = this.searchTemplates(query);
+		this.updateTemplateList();
+	}
+
+	/**
 	 * 处理搜索输入事件（带防抖功能）
 	 */
 	private handleSearchInput = (event: Event) => {
@@ -64,48 +75,44 @@ export class TemplateSelectorModal extends Modal {
 			clearButtonEl.style.display = this.searchQuery ? 'block' : 'none';
 		}
 
-		// 清除之前的防抖定时器
-		if (this.searchDebounceTimer !== null) {
-			clearTimeout(this.searchDebounceTimer);
-		}
+		const trimmedQuery = this.searchQuery.trim();
 
 		// 对于空搜索，立即更新
-		if (this.searchQuery.trim() === '') {
+		if (trimmedQuery === '') {
+			this.scheduleSearchUpdate.cancel();
 			this.filteredTemplates = [...this.templates];
 			this.updateTemplateList();
 			return;
 		}
 
-		// 设置新的防抖定时器（300ms延迟）
-		this.searchDebounceTimer = window.setTimeout(() => {
-			this.filteredTemplates = this.searchTemplates(this.searchQuery);
-			this.updateTemplateList();
-			this.searchDebounceTimer = null;
-		}, 300);
+		this.scheduleSearchUpdate(trimmedQuery);
 	}
 
 	/**
 	 * 处理键盘导航事件
 	 */
 	private handleKeyDown = (event: KeyboardEvent) => {
-		if (this.filteredTemplates.length === 0) return;
+		// 获取所有模板列表中的"所有模板"部分
+		const allTemplates = this.filteredTemplates.filter(t => !this.plugin.settings.recentlyUsedTemplates.includes(t.id));
+
+		if (allTemplates.length === 0) return;
 
 		switch (event.key) {
 			case 'ArrowDown': {
-				this.activeIndex = (this.activeIndex + 1) % this.filteredTemplates.length;
+				this.activeIndex = (this.activeIndex + 1) % allTemplates.length;
 				this.updateActiveDescendant();
 				event.preventDefault();
 				break;
 			}
 			case 'ArrowUp': {
-				this.activeIndex = (this.activeIndex - 1 + this.filteredTemplates.length) % this.filteredTemplates.length;
+				this.activeIndex = (this.activeIndex - 1 + allTemplates.length) % allTemplates.length;
 				this.updateActiveDescendant();
 				event.preventDefault();
 				break;
 			}
 			case 'Enter': {
-				if (this.activeIndex >= 0 && this.activeIndex < this.filteredTemplates.length) {
-					this.handleTemplateClick(this.filteredTemplates[this.activeIndex]);
+				if (this.activeIndex >= 0 && this.activeIndex < allTemplates.length) {
+					this.handleTemplateClick(allTemplates[this.activeIndex]);
 				}
 				event.preventDefault();
 				break;
@@ -122,6 +129,7 @@ export class TemplateSelectorModal extends Modal {
 	 * 更新活动后代（用于键盘导航和无障碍性）
 	 */
 	private updateActiveDescendant() {
+		// 确保 this.listEl 指向的是"所有模板"的 <ul> 元素
 		if (!this.listEl) return;
 
 		// 移除之前的活动状态
@@ -135,7 +143,11 @@ export class TemplateSelectorModal extends Modal {
 		if (newActiveEl) {
 			newActiveEl.classList.add('fast-templater-template-item-active');
 			newActiveEl.scrollIntoView({ block: 'nearest' });
-			this.handleTemplateHover(this.filteredTemplates[this.activeIndex]);
+			// 获取对应的模板并更新预览
+			const allTemplates = this.filteredTemplates.filter(t => !this.plugin.settings.recentlyUsedTemplates.includes(t.id));
+			if (this.activeIndex >= 0 && this.activeIndex < allTemplates.length) {
+				this.handleTemplateHover(allTemplates[this.activeIndex]);
+			}
 		}
 	}
 
@@ -229,7 +241,7 @@ export class TemplateSelectorModal extends Modal {
 					message: '模板文件夹中还没有找到任何 .md 模板文件。您可以创建一些模板文件，或者选择其他文件夹。',
 					actions: [
 						{ text: '创建模板', action: () => {
-							new Notice('请在模板文件夹中创建 .md 文件作为模板。');
+							notifyInfo('请在模板文件夹中创建 .md 文件作为模板。');
 							openSettings();
 						}, primary: true },
 						{ text: '更改路径', action: openSettings }
@@ -284,19 +296,14 @@ export class TemplateSelectorModal extends Modal {
 	/**
 	 * 渲染模板列表项
 	 */
-	private renderTemplateItems(containerEl: HTMLElement) {
-		// 创建模板列表
-		this.listEl = containerEl.createEl('ul', {cls: 'fast-templater-template-list'});
-
-		this.filteredTemplates.forEach((template, index) => {
-			if (!this.listEl) return;
-
-			const listItemEl = this.listEl.createEl('li', {
+	private renderTemplateItems(containerEl: HTMLElement, templates: Template[], context: 'recent' | 'all') {
+		templates.forEach((template, index) => {
+			const listItemEl = containerEl.createEl('li', {
 				cls: 'fast-templater-template-item'
 			});
 
-			// 添加活动状态样式
-			if (index === this.activeIndex) {
+			// 如果是"所有模板"列表，则处理键盘导航的 active 状态
+			if (context === 'all' && index === this.activeIndex) {
 				listItemEl.addClass('fast-templater-template-item-active');
 			}
 
@@ -313,8 +320,13 @@ export class TemplateSelectorModal extends Modal {
 
 			// 为模板列表项添加hover事件
 			listItemEl.addEventListener('mouseenter', () => {
-				this.activeIndex = index;
-				this.updateActiveDescendant();
+				if (context === 'all') {
+					this.activeIndex = index;
+					this.updateActiveDescendant();
+				} else {
+					// 对于"最近使用"列表，只更新预览，不影响键盘导航焦点
+					this.handleTemplateHover(template);
+				}
 			});
 
 			// 为模板列表项添加click事件
@@ -414,8 +426,33 @@ export class TemplateSelectorModal extends Modal {
 			return;
 		}
 
-		// 渲染模板列表项
-		this.renderTemplateItems(containerEl);
+		// 获取最近使用的模板
+		const recentTemplateIds = this.plugin.settings.recentlyUsedTemplates;
+		const recentTemplates: Template[] = recentTemplateIds
+			.map(id => this.templateManager.getTemplateById(id))
+			.filter((t): t is Template => t !== undefined)
+			.filter(template => this.filteredTemplates.some(filtered => filtered.id === template.id));
+
+		// 渲染"最近使用"部分 (如果有)
+		if (recentTemplates.length > 0) {
+			containerEl.createEl('h4', { text: '最近使用', cls: 'fast-templater-list-header' });
+			const recentListEl = containerEl.createEl('ul', { cls: 'fast-templater-template-list' });
+			this.renderTemplateItems(recentListEl, recentTemplates, 'recent');
+		}
+
+		// 渲染"所有模板"部分 (排除最近使用的)
+		const recentIdsSet = new Set(recentTemplateIds);
+		const allOtherTemplates = this.filteredTemplates.filter(t => !recentIdsSet.has(t.id));
+
+		if (allOtherTemplates.length > 0) {
+			containerEl.createEl('h4', { text: '所有模板', cls: 'fast-templater-list-header' });
+			const allListEl = containerEl.createEl('ul', { cls: 'fast-templater-template-list' });
+			this.listEl = allListEl; // 将键盘导航的目标指向"所有模板"列表
+			this.renderTemplateItems(allListEl, allOtherTemplates, 'all');
+		} else if (recentTemplates.length === 0) {
+			// 仅当两个列表都为空时，才显示无结果
+			this.renderNoResultsState(containerEl);
+		}
 	}
 
 	/**
@@ -432,21 +469,12 @@ export class TemplateSelectorModal extends Modal {
 	 * 处理模板hover事件，更新预览内容（带防抖功能）
 	 */
 	private handleTemplateHover(template: Template) {
-		// 清除之前的预览防抖定时器
-		if (this.previewDebounceTimer !== null) {
-			clearTimeout(this.previewDebounceTimer);
-		}
-
 		// 如果当前选中的模板与hover的模板相同，无需更新预览
 		if (this.selectedTemplate && this.selectedTemplate.id === template.id) {
 			return;
 		}
 
-		// 设置新的预览防抖定时器（200ms延迟，比搜索防抖更快以提供更好的用户体验）
-		this.previewDebounceTimer = window.setTimeout(() => {
-			this.updatePreview(template);
-			this.previewDebounceTimer = null;
-		}, 200);
+		this.schedulePreviewUpdate(template);
 	}
 
 	/**
@@ -472,7 +500,7 @@ export class TemplateSelectorModal extends Modal {
 				return; // 阻止原有的插入逻辑
 			} else {
 				// 预设不存在，显示警告并回退到原有逻辑
-				new Notice(`引用的预设 "${configId}" 不存在，将使用默认插入方式`);
+				notifyWarning(`引用的预设 "${configId}" 不存在，将使用默认插入方式`);
 			}
 		}
 
@@ -481,19 +509,32 @@ export class TemplateSelectorModal extends Modal {
 	}
 
 	/**
+	 * 获取当前 Markdown 编辑器，无法获取时提示用户
+	 */
+	private getActiveEditor(): Editor | null {
+		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!activeView || !activeView.editor) {
+			notifyError('无法获取当前编辑器，请确保在 Markdown 文件中使用此功能。');
+			return null;
+		}
+		return activeView.editor;
+	}
+
+	/**
+	 * 拼接插入结果的细节描述
+	 */
+	private formatInsertionDetails(...segments: Array<string | undefined | null>): string {
+		const parts = segments.filter((segment): segment is string => Boolean(segment && segment.trim()));
+		return parts.length > 0 ? `（${parts.join('，')}）` : '';
+	}
+
+	/**
 	 * 插入模板到编辑器
 	 */
 	private async insertTemplate(template: Template) {
 		try {
-			// 获取当前激活的Markdown视图和编辑器实例
-			const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-
-			if (!activeView || !activeView.editor) {
-				new Notice('无法获取当前编辑器，请确保在Markdown文件中使用此功能。');
-				return;
-			}
-
-			const editor = activeView.editor;
+			const editor = this.getActiveEditor();
+			if (!editor) return;
 
 			// 检查是否启用智能 Frontmatter 合并功能
 			if (this.plugin.settings.enableFrontmatterMerge) {
@@ -503,12 +544,17 @@ export class TemplateSelectorModal extends Modal {
 				await this.insertTemplateWithoutFrontmatterMerge(template, editor);
 			}
 
+			// 在成功插入模板后，添加到最近使用列表
+			await this.plugin.addRecentTemplate(template.id);
+
 			// 插入成功后关闭模态窗口
 			this.close();
 
 		} catch (error) {
-			console.error('Fast Templater: 插入模板失败', error);
-			new Notice('插入模板失败，请稍后重试。');
+			handleError(error, {
+				context: 'TemplateSelectorModal.insertTemplate',
+				userMessage: '插入模板失败，请稍后重试。',
+			});
 		}
 	}
 
@@ -516,51 +562,49 @@ export class TemplateSelectorModal extends Modal {
 	 * 使用智能 Frontmatter 合并功能插入模板
 	 */
 	private async insertTemplateWithFrontmatterMerge(template: Template, editor: Editor) {
+		const {
+			content: processedContent,
+			usedTemplater,
+			error: templaterNotice,
+		} = await TemplateEngine.processTemplateContent(this.app, this.plugin, template);
+
+		if (templaterNotice) {
+			notifyWarning(`${templaterNotice}，继续尝试 frontmatter 合并`);
+		}
+
+		const { frontmatter: templateFM, body: templateBody } = TemplateEngine.parseTemplateContent(processedContent);
+		const hasFrontmatter = Object.keys(templateFM).length > 0;
+
+		if (!hasFrontmatter) {
+			editor.replaceSelection(processedContent);
+			const details = this.formatInsertionDetails(
+				'模板无 frontmatter，直接插入',
+				usedTemplater ? '并使用 Templater 处理' : undefined,
+			);
+			notifySuccess(`模板 "${template.name}" 已插入${details}。`);
+			return;
+		}
+
 		try {
-			// 1. 统一处理模板内容（包括 Templater 集成）
-			const { content: processedContent, usedTemplater, error } = await TemplateEngine.processTemplateContent(this.app, this.plugin, template);
-
-			// 2. 如果有 Templater 处理错误，显示通知
-			if (error) {
-				new Notice(`${error}进行 frontmatter 合并`);
-			}
-
-			// 3. 解析处理后的内容，分离 frontmatter 和主体
-			const { frontmatter: templateFM, body: templateBody } = TemplateEngine.parseTemplateContent(processedContent);
-
-			// 4. 获取当前笔记的元数据
 			const { frontmatter: noteFM, position: notePosition } = TemplateEngine.getNoteMetadata(this.app);
-
-			// 5. 如果模板没有 frontmatter，直接插入处理后的内容
-			if (Object.keys(templateFM).length === 0) {
-				editor.replaceSelection(processedContent);
-				const notice = `模板 "${template.name}" 已插入（模板无 frontmatter，直接插入）${usedTemplater ? '并使用 Templater 处理' : ''}。`;
-				new Notice(notice);
-				return;
-			}
-
-			// 6. 合并 frontmatter
 			const mergedFM = TemplateEngine.mergeFrontmatters(noteFM, templateFM);
 
-			// 7. 更新笔记的 frontmatter
 			TemplateEngine.updateNoteFrontmatter(editor, mergedFM, notePosition);
 
-			// 8. 插入模板主体内容到光标位置
 			if (templateBody.trim()) {
 				editor.replaceSelection(templateBody);
 			}
 
-			// 9. 成功通知
-			const templaterInfo = usedTemplater ? '并使用 Templater 处理' : '';
-			const mergeInfo = Object.keys(templateFM).length > 0
-				? ` 已合并 ${Object.keys(templateFM).length} 个 frontmatter 字段`
-				: '';
-			new Notice(`模板 "${template.name}" 已插入${templaterInfo}${mergeInfo}。`);
-
+			const details = this.formatInsertionDetails(
+				usedTemplater ? '并使用 Templater 处理' : undefined,
+				`已合并 ${Object.keys(templateFM).length} 个 frontmatter 字段`,
+			);
+			notifySuccess(`模板 "${template.name}" 已插入${details}。`);
 		} catch (error) {
-			console.error('Fast Templater: 智能 frontmatter 合并失败', error);
-			// 如果智能合并失败，回退到普通插入
-			new Notice('Frontmatter 合并失败，回退到普通插入');
+			handleError(error, {
+				context: 'TemplateSelectorModal.insertTemplateWithFrontmatterMerge',
+			});
+			notifyWarning('Frontmatter 合并失败，回退到普通插入');
 			editor.replaceSelection(template.content);
 		}
 	}
@@ -578,13 +622,13 @@ export class TemplateSelectorModal extends Modal {
 		// 3. 根据处理结果显示相应的通知
 		const templater = new ObsidianTemplaterAdapter(this.app);
 		if (usedTemplater) {
-			new Notice(`模板 "${template.name}" 已插入并使用 Templater 处理。`);
+			notifySuccess(`模板 "${template.name}" 已插入，并使用 Templater 处理。`);
 		} else if (this.plugin.settings.enableTemplaterIntegration && !templater.isAvailable()) {
-			new Notice(`模板 "${template.name}" 已插入(未检测到 Templater 插件)。`);
+			notifyWarning(`模板 "${template.name}" 已插入（未检测到 Templater 插件）。`);
 		} else if (error) {
-			new Notice(`模板 "${template.name}" 已插入(${error})。`);
+			notifyWarning(`模板 "${template.name}" 已插入（${error}）。`);
 		} else {
-			new Notice(`模板 "${template.name}" 已插入。`);
+			notifySuccess(`模板 "${template.name}" 已插入。`);
 		}
 	}
 
@@ -615,7 +659,9 @@ export class TemplateSelectorModal extends Modal {
 				MarkdownRenderer.renderMarkdown(template.content, el, template.path, new Component());
 			});
 		} catch (error) {
-			console.error('Fast Templater: 预览渲染失败', error);
+			handleError(error, {
+				context: 'TemplateSelectorModal.updatePreview',
+			});
 			// 显示渲染错误提示
 			this.previewContainer.createEl('p', {
 				text: '预览渲染失败，显示原始内容：',
@@ -712,17 +758,9 @@ export class TemplateSelectorModal extends Modal {
 			this.searchInputEl = null;
 		}
 
-		// 清理防抖定时器
-		if (this.searchDebounceTimer !== null) {
-			clearTimeout(this.searchDebounceTimer);
-			this.searchDebounceTimer = null;
-		}
-
-		// 清理预览防抖定时器
-		if (this.previewDebounceTimer !== null) {
-			clearTimeout(this.previewDebounceTimer);
-			this.previewDebounceTimer = null;
-		}
+		// 取消挂起的防抖任务
+		this.scheduleSearchUpdate.cancel();
+		this.schedulePreviewUpdate.cancel();
 
 		contentEl.empty();
 	}

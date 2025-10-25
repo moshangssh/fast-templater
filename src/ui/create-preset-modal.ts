@@ -1,6 +1,7 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal } from 'obsidian';
 import { PresetManager } from '@presets';
 import { withUiNotice } from './ui-utils';
+import { notifyError } from '@utils/notify';
 export class CreatePresetModal extends Modal {
 	private readonly presetManager: PresetManager;
 	private nameInput: HTMLInputElement;
@@ -139,7 +140,7 @@ export class CreatePresetModal extends Modal {
 		const nameValue = this.nameInput.value.trim();
 
 		if (!nameValue) {
-			new Notice('❌ 请修正输入错误后再创建预设');
+			notifyError('请修正输入错误后再创建预设');
 			return;
 		}
 
