@@ -69,10 +69,21 @@ export class SettingsManager {
 			return {};
 		}
 
-		return {
+		const sanitizedData: PartialSettings = {
 			...data,
 			frontmatterPresets: Array.isArray(data.frontmatterPresets) ? data.frontmatterPresets : [],
 		};
+
+		if (typeof data.defaultDateFormat === "string") {
+			const trimmed = data.defaultDateFormat.trim();
+			if (trimmed) {
+				sanitizedData.defaultDateFormat = trimmed;
+			} else {
+				delete sanitizedData.defaultDateFormat;
+			}
+		}
+
+		return sanitizedData;
 	}
 
 	private normalizeSettings(data: PartialSettings): FastTemplaterSettings {
@@ -81,6 +92,7 @@ export class SettingsManager {
 		return {
 			...DEFAULT_SETTINGS,
 			...migrated,
+			defaultDateFormat: this.normalizeDefaultDateFormat(migrated.defaultDateFormat),
 			frontmatterPresets: this.sanitizeFrontmatterPresets(migrated.frontmatterPresets),
 		};
 	}
@@ -133,6 +145,10 @@ export class SettingsManager {
 					sanitized.options = field.options;
 				}
 
+				if (field.useTemplaterTimestamp === true) {
+					sanitized.useTemplaterTimestamp = true;
+				}
+
 				return sanitized;
 			});
 	}
@@ -151,9 +167,20 @@ export class SettingsManager {
 					label: field.label,
 					default: field.default,
 					...(Array.isArray(field.options) && field.options.length > 0 ? { options: field.options } : {}),
+					...(field.useTemplaterTimestamp ? { useTemplaterTimestamp: true } : {}),
 				})),
 			})),
+			defaultDateFormat: this.normalizeDefaultDateFormat(settings.defaultDateFormat),
 			recentlyUsedTemplates: settings.recentlyUsedTemplates,
 		};
+	}
+
+	private normalizeDefaultDateFormat(value: PartialSettings["defaultDateFormat"]): string {
+		if (typeof value !== "string") {
+			return DEFAULT_SETTINGS.defaultDateFormat;
+		}
+
+		const trimmed = value.trim();
+		return trimmed || DEFAULT_SETTINGS.defaultDateFormat;
 	}
 }

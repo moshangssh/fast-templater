@@ -1,25 +1,30 @@
 import { App, Modal } from 'obsidian';
-import type { FrontmatterField, FrontmatterPreset } from '@types';
+import { DEFAULT_SETTINGS, type FrontmatterField, type FrontmatterPreset } from '@types';
 import { PresetManager } from '@presets';
+import type { SettingsManager } from '@settings';
 import { validateAndSave } from './ui-utils';
 import { notifyWarning } from '@utils/notify';
 
 export class FieldConfigModal extends Modal {
 	private readonly presetManager: PresetManager;
+	private readonly settingsManager: SettingsManager;
 	private preset: FrontmatterPreset;
 	private fields: FrontmatterField[];
 	private readonly onPresetsChanged?: () => void;
 	private draggedIndex: number | null = null;
 	private readonly fieldCollapseStates = new WeakMap<FrontmatterField, boolean>();
+	private readonly manualDefaultCache = new WeakMap<FrontmatterField, string>();
 
 	constructor(
 		app: App,
 		presetManager: PresetManager,
+		settingsManager: SettingsManager,
 		preset: FrontmatterPreset,
 		onPresetsChanged?: () => void,
 	) {
 		super(app);
 		this.presetManager = presetManager;
+		this.settingsManager = settingsManager;
 		this.preset = preset;
 		this.onPresetsChanged = onPresetsChanged;
 		// 创建字段副本以避免直接修改原数据
@@ -103,23 +108,80 @@ export class FieldConfigModal extends Modal {
 	 * 渲染单个字段项
 	 */
 	private renderFieldItem(containerEl: HTMLElement, field: FrontmatterField, index: number): void {
+		const fieldItem = this.createFieldItem(containerEl, index);
+		const { configContainer, updateSummary } = this.renderFieldHeader(fieldItem, field, index, containerEl);
+		this.renderFieldConfig(configContainer, field, index, updateSummary, containerEl);
+	}
+
+	/**
+	 * 创建字段项容器
+	 */
+	private createFieldItem(containerEl: HTMLElement, index: number): HTMLDivElement {
 		const fieldItem = containerEl.createDiv('fast-templater-field-item');
 		fieldItem.dataset.index = index.toString();
-		const isCollapsed = this.isFieldCollapsed(field);
+		return fieldItem;
+	}
 
-		// 仅通过拖拽手柄触发拖拽，避免影响输入框操作
+	/**
+	 * 渲染字段头部，负责拖拽、折叠、删除等交互
+	 */
+	private renderFieldHeader(
+		fieldItem: HTMLDivElement,
+		field: FrontmatterField,
+		index: number,
+		containerEl: HTMLElement
+	): { configContainer: HTMLDivElement; updateSummary: () => void } {
 		const headerEl = fieldItem.createDiv('fast-templater-field-header');
 		headerEl.addClass('fast-templater-field-header--collapsible');
 		headerEl.setAttr('tabindex', '0');
 		headerEl.setAttr('role', 'button');
-		const headerLeft = headerEl.createDiv('fast-templater-field-header__left');
 
+		const headerLeft = headerEl.createDiv('fast-templater-field-header__left');
 		const dragHandle = headerLeft.createSpan({
 			cls: 'fast-templater-field-drag-handle',
 			text: '⠿'
 		});
-		dragHandle.setAttr('draggable', 'true');
+		this.setupDragHandle(dragHandle, fieldItem, index, containerEl);
+		this.attachFieldDragTargetHandlers(fieldItem, containerEl);
 
+		const titleEl = headerLeft.createEl('h4', { text: `字段 ${index + 1}` });
+		const summaryEl = headerLeft.createSpan({
+			cls: 'fast-templater-field-header__summary'
+		});
+		const updateSummary = () => this.updateFieldSummary(titleEl, summaryEl, field, index);
+		updateSummary();
+
+		const headerActions = headerEl.createDiv('fast-templater-field-header__actions');
+		const deleteBtn = headerActions.createEl('button', {
+			text: '删除',
+			cls: 'mod-warning'
+		});
+		deleteBtn.onclick = event => {
+			event.stopPropagation();
+			this.removeField(index, containerEl);
+		};
+
+		const configContainer = fieldItem.createDiv('fast-templater-field-config');
+		this.setupCollapseBehaviour({
+			fieldItem,
+			field,
+			headerEl,
+			configContainer
+		});
+
+		return { configContainer, updateSummary };
+	}
+
+	/**
+	 * 配置拖拽手柄交互
+	 */
+	private setupDragHandle(
+		dragHandle: HTMLElement,
+		fieldItem: HTMLDivElement,
+		index: number,
+		containerEl: HTMLElement
+	): void {
+		dragHandle.setAttr('draggable', 'true');
 		dragHandle.addEventListener('dragstart', event => {
 			this.draggedIndex = index;
 			fieldItem.classList.add('fast-templater-field-item--dragging');
@@ -132,7 +194,12 @@ export class FieldConfigModal extends Modal {
 			fieldItem.classList.remove('fast-templater-field-item--dragging');
 			this.clearDragStyles(containerEl);
 		});
+	}
 
+	/**
+	 * 绑定字段项作为拖拽目标时的样式与放置处理
+	 */
+	private attachFieldDragTargetHandlers(fieldItem: HTMLDivElement, containerEl: HTMLElement): void {
 		fieldItem.addEventListener('dragover', event => {
 			if (this.draggedIndex === null) {
 				return;
@@ -162,48 +229,22 @@ export class FieldConfigModal extends Modal {
 			const isAfter = this.isDropAfter(event, fieldItem);
 			this.handleReorder(this.draggedIndex, targetIndex, isAfter, containerEl);
 		});
+	}
 
-		// 字段头部标题
-		const titleEl = headerLeft.createEl('h4', { text: `字段 ${index + 1}` });
-
-		const summaryEl = headerLeft.createSpan({
-			cls: 'fast-templater-field-header__summary'
-		});
-		const updateSummary = () => {
-			// 更新标题：如果有显示名称则使用显示名称，否则使用默认的"字段 N"
-			if (field.label?.trim()) {
-				titleEl.setText(field.label);
-			} else {
-				titleEl.setText(`字段 ${index + 1}`);
-			}
-
-			// 更新摘要信息
-			const summaryParts: string[] = [];
-			if (field.key?.trim()) {
-				summaryParts.push(`键名: ${field.key}`);
-			}
-			if (summaryParts.length === 0) {
-				summaryEl.empty();
-				return;
-			}
-			summaryEl.setText(summaryParts.join(' | '));
-		};
-		updateSummary();
-
-		const headerActions = headerEl.createDiv('fast-templater-field-header__actions');
-
-		// 删除字段按钮
-		const deleteBtn = headerActions.createEl('button', {
-			text: '删除',
-			cls: 'mod-warning'
-		});
-		deleteBtn.onclick = event => {
-			event.stopPropagation();
-			this.removeField(index, containerEl);
-		};
-
-		// 字段配置容器
-		const configContainer = fieldItem.createDiv('fast-templater-field-config');
+	/**
+	 * 设置折叠行为
+	 */
+	private setupCollapseBehaviour({
+		fieldItem,
+		field,
+		headerEl,
+		configContainer
+	}: {
+		fieldItem: HTMLDivElement;
+		field: FrontmatterField;
+		headerEl: HTMLDivElement;
+		configContainer: HTMLDivElement;
+	}): void {
 		const applyCollapseState = (collapsed: boolean) => {
 			this.fieldCollapseStates.set(field, collapsed);
 			fieldItem.classList.toggle('fast-templater-field-item--collapsed', collapsed);
@@ -211,7 +252,7 @@ export class FieldConfigModal extends Modal {
 			headerEl.setAttr('aria-expanded', (!collapsed).toString());
 			headerEl.classList.toggle('fast-templater-field-header--collapsed', collapsed);
 		};
-		applyCollapseState(isCollapsed);
+		applyCollapseState(this.isFieldCollapsed(field));
 
 		const shouldIgnoreToggle = (target: HTMLElement | null) => {
 			if (!target) {
@@ -242,53 +283,119 @@ export class FieldConfigModal extends Modal {
 				toggleCollapse();
 			}
 		});
+	}
 
-		// Key 输入框
-		const keyContainer = configContainer.createDiv('fast-templater-field-row');
-		keyContainer.createEl('label', {
+	/**
+	 * 更新字段头部摘要信息
+	 */
+	private updateFieldSummary(
+		titleEl: HTMLElement,
+		summaryEl: HTMLElement,
+		field: FrontmatterField,
+		index: number
+	): void {
+		if (field.label?.trim()) {
+			titleEl.setText(field.label);
+		} else {
+			titleEl.setText(`字段 ${index + 1}`);
+		}
+
+		const summaryParts: string[] = [];
+		if (field.key?.trim()) {
+			summaryParts.push(`键名: ${field.key}`);
+		}
+
+		if (summaryParts.length === 0) {
+			summaryEl.empty();
+			return;
+		}
+
+		summaryEl.setText(summaryParts.join(' | '));
+	}
+
+	/**
+	 * 渲染字段配置表单
+	 */
+	private renderFieldConfig(
+		configContainer: HTMLElement,
+		field: FrontmatterField,
+		index: number,
+		updateSummary: () => void,
+		containerEl: HTMLElement
+	): void {
+		this.renderKeyInput(configContainer, field, updateSummary);
+		this.renderLabelInput(configContainer, field, updateSummary);
+		this.renderTypeSelect(configContainer, field, containerEl);
+		this.renderDefaultInput(configContainer, field);
+		this.renderOptionsSection(configContainer, field, index);
+	}
+
+	/**
+	 * 渲染键名输入
+	 */
+	private renderKeyInput(container: HTMLElement, field: FrontmatterField, onValueChange: () => void): void {
+		const row = this.createFieldRow(container);
+		row.createEl('label', {
 			text: 'Frontmatter 键名: *',
 			cls: 'fast-templater-field-label'
 		});
-		const keyInput = keyContainer.createEl('input', {
+		const input = row.createEl('input', {
 			type: 'text',
 			value: field.key,
 			placeholder: '例如: status, category, priority',
 			cls: 'fast-templater-field-input'
 		});
-		keyInput.addEventListener('input', () => {
-			field.key = keyInput.value.trim();
-			updateSummary();
+		input.addEventListener('input', () => {
+			field.key = input.value.trim();
+			onValueChange();
 		});
+	}
 
-		// Label 输入框
-		const labelContainer = configContainer.createDiv('fast-templater-field-row');
-		labelContainer.createEl('label', {
+	/**
+	 * 渲染显示名称输入
+	 */
+	private renderLabelInput(
+		container: HTMLElement,
+		field: FrontmatterField,
+		onValueChange: () => void
+	): void {
+		const row = this.createFieldRow(container);
+		row.createEl('label', {
 			text: '显示名称: *',
 			cls: 'fast-templater-field-label'
 		});
-		const labelInput = labelContainer.createEl('input', {
+		const input = row.createEl('input', {
 			type: 'text',
 			value: field.label,
 			placeholder: '例如: 状态, 分类, 优先级',
 			cls: 'fast-templater-field-input'
 		});
-		labelInput.addEventListener('input', () => {
-			field.label = labelInput.value.trim();
-			updateSummary();
+		input.addEventListener('input', () => {
+			field.label = input.value.trim();
+			onValueChange();
 		});
+	}
 
-		// Type 选择框
-		const typeContainer = configContainer.createDiv('fast-templater-field-row');
-		typeContainer.createEl('label', {
+	/**
+	 * 渲染字段类型选择
+	 */
+	private renderTypeSelect(
+		container: HTMLElement,
+		field: FrontmatterField,
+		fieldsContainerEl: HTMLElement
+	): void {
+		const row = this.createFieldRow(container);
+		row.createEl('label', {
 			text: '字段类型: *',
 			cls: 'fast-templater-field-label'
 		});
-		const typeSelect = typeContainer.createEl('select', {
+		const select = row.createEl('select', {
 			cls: 'fast-templater-field-input fast-templater-field-select'
 		});
-		const types = ['text', 'select', 'date', 'multi-select'];
+
+		const types = ['text', 'select', 'date', 'multi-select'] as const;
 		types.forEach(type => {
-			const option = typeSelect.createEl('option', {
+			const option = select.createEl('option', {
 				value: type,
 				text: this.getTypeLabel(type)
 			});
@@ -296,50 +403,162 @@ export class FieldConfigModal extends Modal {
 				option.selected = true;
 			}
 		});
-		typeSelect.addEventListener('change', () => {
-			field.type = typeSelect.value as FrontmatterField['type'];
-			// 如果类型不是 select 或 multi-select，清空 options
+
+		select.addEventListener('change', () => {
+			field.type = select.value as FrontmatterField['type'];
 			if (field.type !== 'select' && field.type !== 'multi-select') {
 				field.options = [];
 			}
-			// 重新渲染字段以显示/隐藏 options 配置
-			this.renderFieldsList(containerEl);
+			if (field.type !== 'date') {
+				field.useTemplaterTimestamp = false;
+				const cachedDefault = this.manualDefaultCache.get(field);
+				if (typeof cachedDefault === 'string') {
+					field.default = cachedDefault;
+				}
+			}
+			this.renderFieldsList(fieldsContainerEl);
 		});
+	}
 
-		// Default 输入框
-		const defaultContainer = configContainer.createDiv('fast-templater-field-row');
-		defaultContainer.createEl('label', {
+	/**
+	 * 渲染默认值输入
+	 */
+	private renderDefaultInput(container: HTMLElement, field: FrontmatterField): void {
+		const row = this.createFieldRow(container);
+		row.createEl('label', {
 			text: '默认值:',
 			cls: 'fast-templater-field-label'
 		});
-		const defaultInput = defaultContainer.createEl('input', {
+		const input = row.createEl('input', {
 			type: 'text',
 			value: field.default,
 			placeholder: '默认值或 Templater 宏（可选）',
 			cls: 'fast-templater-field-input'
 		});
-		defaultInput.addEventListener('input', () => {
-			field.default = defaultInput.value;
+
+		if (!field.useTemplaterTimestamp) {
+			this.manualDefaultCache.set(field, field.default);
+		}
+
+		input.disabled = field.useTemplaterTimestamp === true;
+		input.addEventListener('input', () => {
+			field.default = input.value;
+			if (!field.useTemplaterTimestamp) {
+				this.manualDefaultCache.set(field, input.value);
+			}
 		});
 
-		// Options 配置（仅当类型为 select 或 multi-select 时显示）
-		if (field.type === 'select' || field.type === 'multi-select') {
-			const optionsContainer = configContainer.createDiv('fast-templater-field-row fast-templater-field-row--stacked');
-			optionsContainer.createEl('label', {
-				text: '选项列表:',
-				cls: 'fast-templater-field-label'
-			});
-
-			const optionsListContainer = optionsContainer.createDiv('fast-templater-options-list');
-			this.renderOptionsList(optionsListContainer, field, index);
-
-			// 添加选项按钮
-			const addOptionBtn = optionsContainer.createEl('button', {
-				text: '添加选项',
-				cls: 'mod-small fast-templater-field-options__btn'
-			});
-			addOptionBtn.onclick = () => this.addOption(field, optionsListContainer, index);
+		if (field.type === 'date') {
+			this.renderDateAutoFillControls(container, field, input);
 		}
+	}
+
+	private renderDateAutoFillControls(
+		container: HTMLElement,
+		field: FrontmatterField,
+		inputEl: HTMLInputElement
+	): void {
+		const row = this.createFieldRow(container, { stacked: true });
+		row.addClass('fast-templater-date-autofill-row');
+
+		const controls = row.createDiv('fast-templater-date-autofill__controls');
+		const checkboxId = `fast-templater-date-autofill-${Math.random().toString(36).slice(2)}`;
+		const checkbox = controls.createEl('input', {
+			type: 'checkbox',
+			cls: 'fast-templater-date-autofill__checkbox',
+		});
+		checkbox.id = checkboxId;
+		checkbox.checked = field.useTemplaterTimestamp === true;
+
+		const labelEl = controls.createEl('label', {
+			cls: 'fast-templater-date-autofill__label',
+			text: '自动填入当前时间（Templater）',
+		});
+		labelEl.htmlFor = checkboxId;
+
+		const previewEl = row.createDiv('setting-item-description fast-templater-date-autofill__preview');
+
+		const applyAutoFillState = (enabled: boolean, options: { initial?: boolean } = {}) => {
+			const { initial = false } = options;
+
+			if (enabled) {
+				if (!initial && !this.manualDefaultCache.has(field)) {
+					this.manualDefaultCache.set(field, inputEl.value);
+				}
+				if (initial && !this.manualDefaultCache.has(field)) {
+					this.manualDefaultCache.set(field, '');
+				}
+				const templaterExpression = this.buildTemplaterDateExpression();
+				field.default = templaterExpression;
+				inputEl.value = templaterExpression;
+				previewEl.setText(`预览：${templaterExpression}`);
+				previewEl.toggleClass('is-hidden', false);
+			} else {
+				const manualValue = this.manualDefaultCache.get(field) ?? '';
+				field.default = manualValue;
+				inputEl.value = manualValue;
+				this.manualDefaultCache.set(field, manualValue);
+				previewEl.empty();
+				previewEl.toggleClass('is-hidden', true);
+			}
+
+			field.useTemplaterTimestamp = enabled;
+			inputEl.disabled = enabled;
+			checkbox.checked = enabled;
+		};
+
+		applyAutoFillState(field.useTemplaterTimestamp === true, { initial: true });
+
+		checkbox.addEventListener('change', () => {
+			applyAutoFillState(checkbox.checked);
+		});
+	}
+
+	private buildTemplaterDateExpression(): string {
+		const formatRaw = this.settingsManager.getSettings().defaultDateFormat ?? DEFAULT_SETTINGS.defaultDateFormat;
+		const trimmed = typeof formatRaw === 'string' ? formatRaw.trim() : DEFAULT_SETTINGS.defaultDateFormat;
+		const format = (trimmed || DEFAULT_SETTINGS.defaultDateFormat)
+			.replace(/\\/g, '\\\\')
+			.replace(/"/g, '\\"');
+		return `<% tp.date.now("${format}") %>`;
+	}
+
+	/**
+	 * 渲染选项配置区域（仅针对 select/multi-select）
+	 */
+	private renderOptionsSection(container: HTMLElement, field: FrontmatterField, index: number): void {
+		if (field.type !== 'select' && field.type !== 'multi-select') {
+			return;
+		}
+
+		const row = this.createFieldRow(container, { stacked: true });
+		row.createEl('label', {
+			text: '选项列表:',
+			cls: 'fast-templater-field-label'
+		});
+
+		const optionsListContainer = row.createDiv('fast-templater-options-list');
+		this.renderOptionsList(optionsListContainer, field, index);
+
+		const addOptionBtn = row.createEl('button', {
+			text: '添加选项',
+			cls: 'mod-small fast-templater-field-options__btn'
+		});
+		addOptionBtn.onclick = () => this.addOption(field, optionsListContainer, index);
+	}
+
+	/**
+	 * 创建字段配置行
+	 */
+	private createFieldRow(
+		container: HTMLElement,
+		options?: { stacked?: boolean }
+	): HTMLDivElement {
+		const classes = ['fast-templater-field-row'];
+		if (options?.stacked) {
+			classes.push('fast-templater-field-row--stacked');
+		}
+		return container.createDiv(classes.join(' '));
 	}
 
 	/**

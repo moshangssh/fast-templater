@@ -3,7 +3,7 @@ import type FastTemplater from '@core/plugin';
 import { SettingsManager } from '@settings';
 import { PresetManager } from '@presets';
 import { ObsidianTemplaterAdapter } from '@engine';
-import type { FastTemplaterSettings, FrontmatterPreset } from '@types';
+import { DEFAULT_SETTINGS, type FastTemplaterSettings, type FrontmatterPreset } from '@types';
 import { FieldConfigModal } from './field-config-modal';
 import { CreatePresetModal } from './create-preset-modal';
 import { renderPresetListUI } from './preset-item-ui';
@@ -214,19 +214,40 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		const {containerEl} = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', {text: 'Fast Templater 设置'});
+		this.renderHeaderSection(containerEl);
+		this.renderTemplateFolderSetting(containerEl);
+		this.renderTemplaterIntegrationSection(containerEl);
+		this.renderDefaultDateFormatSetting(containerEl);
+		this.renderFrontmatterMergeSetting(containerEl);
+		this.renderTemplateStatusSection(containerEl);
+		this.renderPathValidationHints(containerEl);
 
-		// 添加版本信息
-		const versionInfo = containerEl.createEl('div', {cls: 'setting-item-description'});
-		versionInfo.createEl('small', {text: 'Fast Templater v1.0.0 - 可视化模板插件，帮助您通过可视化界面插入模板片段。'});
+		containerEl.createEl('hr', { cls: 'setting-item-hr' });
+		this.renderFrontmatterPresetsManager(containerEl);
+	}
 
-		// 添加分隔线
-		containerEl.createEl('hr', {cls: 'setting-item-hr'});
+	/**
+	 * 渲染页头信息
+	 */
+	private renderHeaderSection(containerEl: HTMLElement): void {
+		containerEl.createEl('h2', { text: 'Fast Templater 设置' });
 
+		const versionInfo = containerEl.createEl('div', { cls: 'setting-item-description' });
+		versionInfo.createEl('small', {
+			text: 'Fast Templater v1.0.0 - 可视化模板插件，帮助您通过可视化界面插入模板片段。'
+		});
+
+		containerEl.createEl('hr', { cls: 'setting-item-hr' });
+	}
+
+	/**
+	 * 渲染模板文件夹路径设置
+	 */
+	private renderTemplateFolderSetting(containerEl: HTMLElement): void {
 		new Setting(containerEl)
 			.setName('模板文件夹路径')
 			.setDesc('输入存放模板文件的文件夹路径，插件将在此路径下查找模板文件')
@@ -235,9 +256,10 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 					.setPlaceholder('例如：Templates')
 					.setValue(this.settings.templateFolderPath);
 
-				// 创建验证按钮容器
 				const parentElement = text.inputEl.parentElement;
-				if (!parentElement) return;
+				if (!parentElement) {
+					return;
+				}
 
 				const buttonContainer = parentElement.createDiv('mod-cta');
 				const verifyButton = buttonContainer.createEl('button', {
@@ -246,21 +268,17 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 					type: 'button'
 				});
 
-				// 使用统一的 withBusy 工具处理异步操作和忙态
 				withBusy(
 					verifyButton,
 					async () => {
-						// 立即获取输入框的当前值，确保验证的是最新的路径
 						const currentPath = setting.getValue();
 						const cleanPath = currentPath.trim().replace(/^\/+|\/+$/g, '');
 
-						// 立即保存当前路径值到插件设置中，确保验证和保存的一致性
 						if (cleanPath !== this.settings.templateFolderPath) {
 							this.settings.templateFolderPath = cleanPath;
 							await this.persistSettings();
 						}
 
-						// 验证保存后的路径
 						const isValid = await this.plugin.templateManager.validateTemplatePath(cleanPath);
 						if (isValid) {
 							notifySuccess(`路径 "${cleanPath}" 有效，已找到模板文件`);
@@ -276,20 +294,22 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 				);
 
 				return setting.onChange(async (value) => {
-					// 清理路径，移除首尾空格和斜杠
 					const cleanPath = value.trim().replace(/^\/+|\/+$/g, '');
 					const oldPath = this.settings.templateFolderPath;
 					this.settings.templateFolderPath = cleanPath;
 					await this.persistSettings();
 
-					// 提供用户反馈（只在路径确实发生变化时）
 					if (cleanPath && cleanPath !== oldPath) {
 						notifySuccess(`模板路径已更新为: ${cleanPath}`);
 					}
 				});
 			});
+	}
 
-		// Templater 集成设置
+	/**
+	 * 渲染 Templater 集成配置及状态
+	 */
+	private renderTemplaterIntegrationSection(containerEl: HTMLElement): void {
 		let templaterStatusEl: HTMLElement;
 		new Setting(containerEl)
 			.setName('启用 Templater 集成')
@@ -299,7 +319,6 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.settings.enableTemplaterIntegration = value;
 					await this.persistSettings();
-					// 更新 Templater 状态显示
 					if (templaterStatusEl) {
 						const newStatusEl = this.renderTemplaterStatus(containerEl);
 						templaterStatusEl.replaceWith(newStatusEl);
@@ -309,10 +328,40 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 				})
 			);
 
-		// 初始显示 Templater 状态
 		templaterStatusEl = this.renderTemplaterStatus(containerEl);
+	}
 
-		// 智能 Frontmatter 合并设置
+	/**
+	 * 渲染默认日期格式设置
+	 */
+	private renderDefaultDateFormatSetting(containerEl: HTMLElement): void {
+		const currentFormat = this.settings.defaultDateFormat || DEFAULT_SETTINGS.defaultDateFormat;
+
+		new Setting(containerEl)
+			.setName('默认日期格式')
+			.setDesc('设置自动填充日期字段时使用的 Templater 日期格式，语法同 <% tp.date.now() %>。常用格式：YYYYMMDDHHmmss、YYYY-MM-DD、YYYY/MM/DD HH:mm')
+			.addText(text => {
+				text
+					.setPlaceholder(DEFAULT_SETTINGS.defaultDateFormat)
+					.setValue(currentFormat)
+					.onChange(async (value) => {
+						const trimmed = value.trim();
+						const nextFormat = trimmed || DEFAULT_SETTINGS.defaultDateFormat;
+
+						if (nextFormat === this.settings.defaultDateFormat) {
+							return;
+						}
+
+						this.settings.defaultDateFormat = nextFormat;
+						await this.persistSettings();
+					});
+			});
+	}
+
+	/**
+	 * 渲染 Frontmatter 合并开关
+	 */
+	private renderFrontmatterMergeSetting(containerEl: HTMLElement): void {
 		new Setting(containerEl)
 			.setName('启用智能 Frontmatter 合并')
 			.setDesc('启用后，插入模板时会自动合并模板与笔记的 frontmatter。模板中的字段会覆盖笔记中的同名字段，tags 字段会智能合并去重。需要安装 js-yaml 库。')
@@ -324,18 +373,13 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 					notifyInfo(value ? '已启用智能 Frontmatter 合并' : '已禁用智能 Frontmatter 合并');
 				})
 			);
+	}
 
-		// 初始显示模板状态
+	/**
+	 * 渲染模板状态信息
+	 */
+	private renderTemplateStatusSection(containerEl: HTMLElement): void {
 		this.renderTemplateStatus(containerEl);
-
-		// 路径验证提示
-		this.renderPathValidationHints(containerEl);
-
-		// 添加分隔线
-		containerEl.createEl('hr', {cls: 'setting-item-hr'});
-
-		// Frontmatter 配置预设管理
-		this.renderFrontmatterPresetsManager(containerEl);
 	}
 
 	/**
@@ -440,6 +484,6 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 	 * 打开字段配置模态窗口
 	 */
 	private async openFieldConfigModal(preset: FrontmatterPreset, onPresetsChanged: () => void): Promise<void> {
-		new FieldConfigModal(this.app, this.presetManager, preset, onPresetsChanged).open();
+		new FieldConfigModal(this.app, this.presetManager, this.settingsManager, preset, onPresetsChanged).open();
 	}
 }

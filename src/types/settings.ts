@@ -6,6 +6,7 @@ export interface FrontmatterField {
 	label: string;
 	default: string;
 	options?: string[];
+	useTemplaterTimestamp?: boolean;
 }
 
 export interface FrontmatterPreset {
@@ -19,6 +20,7 @@ export interface FastTemplaterSettings {
 	enableTemplaterIntegration: boolean;
 	enableFrontmatterMerge: boolean;
 	frontmatterPresets: FrontmatterPreset[];
+	defaultDateFormat: string;
 	recentlyUsedTemplates: string[]; // <-- 新增此行
 }
 
@@ -27,5 +29,6 @@ export const DEFAULT_SETTINGS: FastTemplaterSettings = {
 	enableTemplaterIntegration: true,
 	enableFrontmatterMerge: true,
 	frontmatterPresets: [],
+	defaultDateFormat: "YYYYMMDDHHmmss",
 	recentlyUsedTemplates: [], // <-- 新增此行
 };

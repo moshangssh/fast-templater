@@ -1,4 +1,4 @@
-import { App, Modal } from 'obsidian';
+import { App, Modal, MarkdownView } from 'obsidian';
 import type FastTemplater from '@core/plugin';
 import type { FrontmatterPreset, Template, TemplateInsertionResult } from '@types';
 import * as TemplateEngine from '@engine';
@@ -100,7 +100,37 @@ export class FrontmatterManagerModal extends Modal {
 			});
 
 			// 获取解析后的默认值
-			const resolvedDefault = this.resolvedDefaults.get(field.key) ?? field.default;
+			const resolvedRaw = this.resolvedDefaults.get(field.key) ?? field.default ?? '';
+			const fallbackDefault = typeof field.default === 'string' ? field.default : '';
+			const resolvedDefault = typeof resolvedRaw === 'string'
+				? resolvedRaw
+				: (resolvedRaw !== undefined && resolvedRaw !== null ? String(resolvedRaw) : fallbackDefault);
+			const isTemplaterAutofill = field.type === 'date' && field.useTemplaterTimestamp === true;
+
+			if (!(field.key in this.formData)) {
+				this.formData[field.key] = resolvedDefault || fallbackDefault;
+			}
+
+			if (isTemplaterAutofill) {
+				const previewValue = (this.formData[field.key] as string) || fallbackDefault;
+				const previewInput = fieldContainer.createEl('input', {
+					type: 'text',
+					cls: 'fast-templater-form-input fast-templater-form-input--readonly'
+				}) as HTMLInputElement;
+				previewInput.value = previewValue;
+				previewInput.readOnly = true;
+				previewInput.tabIndex = -1;
+
+				const hintText = previewValue.includes('<%')
+					? 'Templater 未执行，将写入原始表达式。'
+					: '已自动填入当前时间，保存时将写入以上格式。';
+				fieldContainer.createEl('small', {
+					cls: 'setting-item-description',
+					text: hintText
+				});
+
+				return;
+			}
 
 			// 字段输入控件
 			let inputEl: HTMLInputElement | HTMLSelectElement | undefined;
@@ -349,7 +379,7 @@ export class FrontmatterManagerModal extends Modal {
 
 		try {
 			const userFrontmatter = TemplateEngine.convertFormDataToFrontmatter(this.preset, this.formData);
-			const result = await TemplateEngine.insertTemplateWithUserInput(
+			const preparation = await TemplateEngine.prepareTemplateWithUserInput(
 				this.app,
 				this.plugin,
 				this.template,
@@ -357,9 +387,64 @@ export class FrontmatterManagerModal extends Modal {
 				userFrontmatter,
 			);
 
-			this.handleInsertionResult(result);
-			await this.plugin.addRecentTemplate(this.template.id);
-			this.close();
+			const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (!activeView || !activeView.editor) {
+				throw new Error('无法获取当前编辑器，请确保在 Markdown 文件中使用此功能');
+			}
+
+			const editor = activeView.editor;
+			let templateBodyInserted = false;
+
+			try {
+				if (preparation.hasTemplateBody) {
+					editor.replaceSelection(preparation.templateBody);
+					templateBodyInserted = true;
+				}
+
+				TemplateEngine.updateNoteFrontmatter(
+					editor,
+					preparation.mergedFrontmatter,
+					preparation.noteMetadata.position,
+				);
+
+				const result: TemplateInsertionResult = {
+					usedTemplater: preparation.usedTemplater,
+					templaterError: preparation.templaterError,
+					mergedFrontmatter: preparation.mergedFrontmatter,
+					mergeCount: preparation.mergeCount,
+					frontmatterUpdated: true,
+					templateBodyInserted,
+					fallbackToBodyOnly: false,
+				};
+
+				this.handleInsertionResult(result);
+				await this.plugin.addRecentTemplate(this.template.id);
+				this.close();
+			} catch (error) {
+				console.error('Fast Templater: 插入操作失败', error);
+
+				try {
+					editor.replaceSelection(preparation.templateBody);
+					templateBodyInserted = preparation.hasTemplateBody;
+
+					const fallbackResult: TemplateInsertionResult = {
+						usedTemplater: preparation.usedTemplater,
+						templaterError: preparation.templaterError,
+						mergedFrontmatter: preparation.mergedFrontmatter,
+						mergeCount: preparation.mergeCount,
+						frontmatterUpdated: false,
+						templateBodyInserted,
+						fallbackToBodyOnly: true,
+					};
+
+					this.handleInsertionResult(fallbackResult);
+					await this.plugin.addRecentTemplate(this.template.id);
+					this.close();
+				} catch (fallbackError) {
+					console.error('Fast Templater: 回退插入也失败', fallbackError);
+					throw new Error('模板插入完全失败，请手动复制模板内容');
+				}
+			}
 		} catch (error) {
 			this.handleInsertionFailure(error);
 		}

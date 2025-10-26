@@ -1,3 +1,5 @@
+import type { NoteMetadata } from "./shared";
+
 export interface TemplateProcessingResult {
 	content: string;
 	usedTemplater: boolean;
@@ -7,6 +9,16 @@ export interface TemplateProcessingResult {
 export interface ParsedTemplateContent {
 	frontmatter: Record<string, unknown>;
 	body: string;
+}
+
+export interface TemplatePreparationResult {
+	usedTemplater: boolean;
+	templaterError?: string;
+	mergedFrontmatter: Record<string, unknown>;
+	templateBody: string;
+	hasTemplateBody: boolean;
+	noteMetadata: NoteMetadata;
+	mergeCount: number;
 }
 
 export interface TemplateInsertionResult {

@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView } from 'obsidian';
+import { App, Editor } from 'obsidian';
 import * as yaml from 'js-yaml';
 import type FastTemplater from '@core/plugin';
 import type {
@@ -7,8 +7,8 @@ import type {
 	ParsedTemplateContent,
 	Pos,
 	Template,
-	TemplateInsertionResult,
-	TemplateProcessingResult
+	TemplateProcessingResult,
+	TemplatePreparationResult
 } from '@types';
 import type { TemplaterPort } from './TemplaterPort';
 import { ObsidianTemplaterAdapter } from './ObsidianTemplaterAdapter';
@@ -68,7 +68,25 @@ export function mergeFrontmatterWithUserInput(
 
 	delete finalResult['fast-templater-config'];
 
-	return finalResult;
+	const orderedFrontmatter: Record<string, unknown> = {};
+	const presetKeys = preset.fields.map(field => field.key);
+	const presetKeySet = new Set(presetKeys);
+
+	// 按预设字段顺序输出 frontmatter，确保顺序完全匹配用户配置
+	presetKeys.forEach((key) => {
+		if (Object.prototype.hasOwnProperty.call(finalResult, key)) {
+			orderedFrontmatter[key] = finalResult[key];
+		}
+	});
+
+	// 保留额外字段，按照计算后的顺序依次附加
+	Object.keys(finalResult).forEach((key) => {
+		if (!presetKeySet.has(key)) {
+			orderedFrontmatter[key] = finalResult[key];
+		}
+	});
+
+	return orderedFrontmatter;
 }
 
 export function convertFormDataToFrontmatter(
@@ -86,15 +104,24 @@ export function convertFormDataToFrontmatter(
 		}
 
 		switch (field.type) {
-			case 'date': {
-				const date = new Date(value as string);
-				if (!isNaN(date.getTime())) {
-					frontmatter[field.key] = date.toISOString().split('T')[0];
+		case 'date': {
+			if (field.useTemplaterTimestamp) {
+				if (typeof value === 'string') {
+					frontmatter[field.key] = value;
 				} else {
-					throw new Error(`字段 "${field.label}" 的日期格式无效`);
+					frontmatter[field.key] = '';
 				}
 				break;
 			}
+
+			const date = new Date(value as string);
+			if (!isNaN(date.getTime())) {
+				frontmatter[field.key] = date.toISOString().split('T')[0];
+			} else {
+				throw new Error(`字段 "${field.label}" 的日期格式无效`);
+			}
+			break;
+		}
 
 			case 'multi-select': {
 				if (Array.isArray(value) && value.length > 0) {
@@ -122,19 +149,13 @@ export function convertFormDataToFrontmatter(
 	return frontmatter;
 }
 
-export async function insertTemplateWithUserInput(
+export async function prepareTemplateWithUserInput(
 	app: App,
 	plugin: FastTemplater,
 	template: Template,
 	preset: FrontmatterPreset,
 	userFrontmatter: Record<string, unknown>,
-): Promise<TemplateInsertionResult> {
-	const activeView = app.workspace.getActiveViewOfType(MarkdownView);
-	if (!activeView || !activeView.editor) {
-		throw new Error('无法获取当前编辑器，请确保在 Markdown 文件中使用此功能');
-	}
-
-	const editor = activeView.editor;
+): Promise<TemplatePreparationResult> {
 	const {
 		content: processedContent,
 		usedTemplater,
@@ -151,46 +172,17 @@ export async function insertTemplateWithUserInput(
 
 	const noteMetadata = getNoteMetadata(app);
 	const trimmedBody = templateBody.trim();
-	let templateBodyInserted = false;
+	const hasTemplateBody = trimmedBody.length > 0;
 
-	try {
-		if (trimmedBody) {
-			editor.replaceSelection(templateBody);
-			templateBodyInserted = true;
-		}
-
-		updateNoteFrontmatter(editor, mergedFrontmatter, noteMetadata.position);
-
-		return {
-			usedTemplater,
-			templaterError,
-			mergedFrontmatter,
-			mergeCount: Object.keys(mergedFrontmatter).length,
-			frontmatterUpdated: true,
-			templateBodyInserted,
-			fallbackToBodyOnly: false,
-		};
-	} catch (error) {
-		console.error('Fast Templater: 插入操作失败', error);
-
-		try {
-			editor.replaceSelection(templateBody);
-			templateBodyInserted = trimmedBody.length > 0;
-
-			return {
-				usedTemplater,
-				templaterError,
-				mergedFrontmatter,
-				mergeCount: Object.keys(mergedFrontmatter).length,
-				frontmatterUpdated: false,
-				templateBodyInserted,
-				fallbackToBodyOnly: true,
-			};
-		} catch (fallbackError) {
-			console.error('Fast Templater: 回退插入也失败', fallbackError);
-			throw new Error('模板插入完全失败，请手动复制模板内容');
-		}
-	}
+	return {
+		usedTemplater,
+		templaterError,
+		mergedFrontmatter,
+		templateBody,
+		hasTemplateBody,
+		noteMetadata,
+		mergeCount: Object.keys(mergedFrontmatter).length,
+	};
 }
 
 export function mergeFrontmatters(baseFrontmatter: Record<string, unknown>, overrideFrontmatter: Record<string, unknown>): Record<string, unknown> {

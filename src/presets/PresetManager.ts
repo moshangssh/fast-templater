@@ -179,10 +179,16 @@ export class PresetManager {
 		preset.fields.forEach((field) => {
 			const value = formData[field.key];
 
-			if (field.type === 'date' && value && (typeof value === 'string' && value.trim() !== '')) {
-				const date = new Date(value as string);
-				if (isNaN(date.getTime())) {
-					errors.push(`字段 "${field.label}" 的日期格式无效`);
+			if (field.type === 'date') {
+				if (field.useTemplaterTimestamp) {
+					return;
+				}
+
+				if (value && typeof value === 'string' && value.trim() !== '') {
+					const date = new Date(value as string);
+					if (isNaN(date.getTime())) {
+						errors.push(`字段 "${field.label}" 的日期格式无效`);
+					}
 				}
 			}
 		});
