@@ -179,13 +179,6 @@ export class TemplateManager {
 	getTemplateLoadStatus(): TemplateLoadResult {
 		return { ...this.loadResult };
 	}
-
-	hasTemplates(): boolean {
-		return (
-			this.templates.length > 0 &&
-			this.loadResult.status === TemplateLoadStatus.SUCCESS
-		);
-	}
 }
 
 export default TemplateManager;

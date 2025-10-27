@@ -82,19 +82,3 @@ export function debounce<T extends AnyFunction>(
 
 	return debounced;
 }
-
-export interface ThrottleOptions {
-	leading?: boolean;
-	trailing?: boolean;
-}
-
-export function throttle<T extends AnyFunction>(
-	fn: T,
-	wait: number,
-	options: ThrottleOptions = {},
-): DebouncedFunction<T> {
-	return debounce(fn, wait, {
-		leading: options.leading ?? true,
-		trailing: options.trailing ?? true,
-	});
-}

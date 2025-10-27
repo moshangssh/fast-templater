@@ -1,6 +1,6 @@
 import { handleError } from '@core/error';
 import { runWithBusy } from '@utils/async-ui';
-import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '@utils/notify';
+import { notifySuccess, notifyWarning } from '@utils/notify';
 
 /**
  * UI 工具函数集合
@@ -183,124 +183,6 @@ export async function confirmAndDelete(
 		options?.onFail?.(normalizedError);
 
 		return false;
-	}
-}
-
-/**
- * 创建一个带有标准错误处理的表单提交处理器
- *
- * @example
- * ```ts
- * const handleSubmit = createFormSubmitHandler(
- *   async () => {
- *     const preset = await presetManager.createPreset({ name: this.nameInput.value });
- *     return preset;
- *   },
- *   {
- *     success: (preset) => `已创建预设 "${preset.name}"`,
- *     fail: '创建预设失败',
- *     onSuccess: () => {
- *       this.close();
- *       this.onPresetsChanged?.();
- *     }
- *   }
- * );
- *
- * submitButton.onclick = handleSubmit;
- * ```
- */
-export function createFormSubmitHandler<T>(
-	submitFn: () => Promise<T>,
-	options: {
-		success: string | ((result: T) => string);
-		fail: string | ((error: Error) => string);
-		onSuccess?: (result: T) => void;
-		onFail?: (error: Error) => void;
-		validate?: () => boolean | string; // 返回 true 表示验证通过，返回 string 表示验证失败并显示错误消息
-	}
-): () => Promise<void> {
-	return async () => {
-		// 执行验证（如果提供）
-		if (options.validate) {
-			const validationResult = options.validate();
-			if (validationResult !== true) {
-				const errorMessage = typeof validationResult === 'string'
-					? validationResult
-					: '验证失败';
-				notifyError(errorMessage);
-				return;
-			}
-		}
-
-		// 执行提交操作
-		await withUiNotice(submitFn, options);
-	};
-}
-
-/**
- * 批量操作的进度通知包装器
- *
- * @example
- * ```ts
- * await withProgressNotice(
- *   async (updateProgress) => {
- *     for (let i = 0; i < items.length; i++) {
- *       await processItem(items[i]);
- *       updateProgress(i + 1, items.length);
- *     }
- *   },
- *   {
- *     start: '开始处理...',
- *     complete: '处理完成',
- *     fail: '处理失败'
- *   }
- * );
- * ```
- */
-export async function withProgressNotice<T>(
-	asyncFn: (updateProgress: (current: number, total: number) => void) => Promise<T>,
-	options: {
-		start?: string;
-		complete: string | ((result: T) => string);
-		fail: string | ((error: Error) => string);
-		onComplete?: (result: T) => void;
-		onFail?: (error: Error) => void;
-	}
-): Promise<T | null> {
-	// 显示开始通知
-	if (options.start) {
-		notifyInfo(options.start);
-	}
-
-	const updateProgress = (current: number, total: number) => {
-		// 简单显示进度通知，不尝试更新现有通知
-		const message = `处理中... (${current}/${total})`;
-		notifyInfo(message, { duration: 1000, prefix: false });
-	};
-
-	try {
-		const result = await asyncFn(updateProgress);
-
-		// 显示完成通知
-		const completeMessage = typeof options.complete === 'function'
-			? options.complete(result)
-			: options.complete;
-		notifySuccess(completeMessage);
-
-		options.onComplete?.(result);
-
-		return result;
-	} catch (error) {
-		const normalizedError = handleError(error, {
-			context: 'UI.withProgressNotice',
-			userMessage: (err) => typeof options.fail === 'function'
-				? options.fail(err)
-				: options.fail,
-		});
-
-		options.onFail?.(normalizedError);
-
-		return null;
 	}
 }
 

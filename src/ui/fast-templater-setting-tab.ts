@@ -1,7 +1,11 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, Modal, PluginSettingTab, Setting } from 'obsidian';
 import type FastTemplater from '@core/plugin';
 import { SettingsManager } from '@settings';
-import { PresetManager } from '@presets';
+import {
+	PresetManager,
+	type ImportPresetsResult,
+	type PresetImportStrategy,
+} from '@presets';
 import { ObsidianTemplaterAdapter } from '@engine';
 import { DEFAULT_SETTINGS, type FastTemplaterSettings, type FrontmatterPreset } from '@types';
 import { FieldConfigModal } from './field-config-modal';
@@ -10,6 +14,7 @@ import { renderPresetListUI } from './preset-item-ui';
 import { withUiNotice, confirmAndDelete, renderStatusBlock } from './ui-utils';
 import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '@utils/notify';
 import { withBusy } from '@utils/async-ui';
+import { handleError } from '@core/error';
 
 export class FastTemplaterSettingTab extends PluginSettingTab {
 	plugin: FastTemplater;
@@ -386,30 +391,61 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 	 * 渲染 Frontmatter 配置预设管理界面
 	 */
 	private renderFrontmatterPresetsManager(containerEl: HTMLElement): void {
-		containerEl.createEl('h3', {text: 'Frontmatter 配置预设'});
+		containerEl.createEl('h3', { text: 'Frontmatter 配置预设' });
 
-		// 添加预设管理说明
-		const descEl = containerEl.createEl('div', {cls: 'setting-item-description'});
-		descEl.createEl('small', {text: '创建和管理 Frontmatter 配置预设，为后续的字段配置做准备。每个预设包含一组可重用的 frontmatter 字段。'});
-
-		// 添加新预设按钮
-		const addButtonContainer = containerEl.createDiv('fast-templater-preset-actions');
-		const addPresetButton = addButtonContainer.createEl('button', {
-			text: '添加新预设',
-			cls: 'mod-cta'
+		const descEl = containerEl.createEl('div', { cls: 'setting-item-description' });
+		descEl.createEl('small', {
+			text: '创建和管理 Frontmatter 配置预设，为后续的字段配置做准备。每个预设包含一组可重用的 frontmatter 字段。',
 		});
 
-		// 预设列表容器
-		const presetsListContainer = containerEl.createDiv('fast-templater-presets-list');
+		const actionsContainer = containerEl.createDiv('fast-templater-preset-actions');
+		const addPresetButton = actionsContainer.createEl('button', {
+			text: '添加新预设',
+			cls: 'mod-cta',
+		});
+		const exportButton = actionsContainer.createEl('button', {
+			text: '导出全部',
+		});
+		const importButton = actionsContainer.createEl('button', {
+			text: '从文件导入',
+		});
 
-		// 渲染预设列表
+		const presetsListContainer = containerEl.createDiv('fast-templater-presets-list');
 		const refreshPresetsList = () => this.renderPresetsList(presetsListContainer);
 		refreshPresetsList();
 
-		// 添加新预设按钮事件
 		addPresetButton.onclick = async () => {
 			await this.addNewPreset(refreshPresetsList);
 		};
+
+		withBusy(
+			exportButton,
+			async () => {
+				await this.exportAllPresetsToFile();
+			},
+			{
+				busyText: '导出中…',
+				errorContext: 'SettingTab.exportAllPresets',
+			},
+		);
+
+		withBusy(
+			importButton,
+			async () => {
+				const file = await this.pickPresetFile();
+				if (!file) {
+					notifyInfo('未选择任何文件，已取消导入');
+					return;
+				}
+				const content = await file.text();
+				await this.handleImportContent(content, refreshPresetsList);
+			},
+			{
+				busyText: '读取中…',
+				errorContext: 'SettingTab.importPresetsFromFile',
+			},
+		);
+
 	}
 
 	/**
@@ -437,7 +473,151 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 		});
 	}
 
-	
+	private async exportAllPresetsToFile(): Promise<void> {
+		try {
+			const presets = this.presetManager.getPresets();
+			if (presets.length === 0) {
+				notifyInfo('暂无预设可导出');
+				return;
+			}
+
+			const json = this.presetManager.exportAllPresets();
+			const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+			const url = URL.createObjectURL(blob);
+			const anchor = document.createElement('a');
+			anchor.href = url;
+			anchor.download = 'fast-templater-presets.json';
+			document.body.appendChild(anchor);
+			anchor.click();
+			document.body.removeChild(anchor);
+			URL.revokeObjectURL(url);
+			notifySuccess(`已导出 ${presets.length} 个预设`);
+		} catch (error) {
+			handleError(error, {
+				context: 'SettingTab.exportAllPresets',
+				userMessage: '导出预设失败，请稍后重试。',
+			});
+		}
+	}
+
+	private async pickPresetFile(): Promise<File | null> {
+		return new Promise((resolve) => {
+			const input = document.createElement('input');
+			input.type = 'file';
+			input.accept = '.json,application/json';
+			input.style.display = 'none';
+			document.body.appendChild(input);
+
+			let settled = false;
+
+			const finalize = (file: File | null) => {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				document.body.removeChild(input);
+				window.removeEventListener('focus', handleWindowFocus);
+				resolve(file);
+			};
+
+			const handleWindowFocus = () => {
+				// 焦点返回后再次检查是否已选择文件，避免误判为取消
+				setTimeout(() => {
+					if (settled) {
+						return;
+					}
+					const candidate = input.files?.[0] ?? null;
+					finalize(candidate);
+				}, 120);
+			};
+
+			input.addEventListener(
+				'change',
+				() => {
+					const file = input.files?.[0] ?? null;
+					finalize(file);
+				},
+				{ once: true },
+			);
+
+			input.addEventListener(
+				'cancel',
+				() => {
+					finalize(null);
+				},
+				{ once: true },
+			);
+
+			window.addEventListener('focus', handleWindowFocus, { once: true });
+			input.click();
+		});
+	}
+
+	private async handleImportContent(raw: string, onPresetsChanged: () => void): Promise<void> {
+		const content = raw.trim();
+		if (!content) {
+			notifyWarning('导入内容为空，未执行任何操作');
+			return;
+		}
+
+		try {
+			const strategy = await this.chooseImportStrategy();
+			if (!strategy) {
+				notifyInfo('已取消导入');
+				return;
+			}
+
+			if (strategy === 'replace') {
+				const confirmed = await this.confirmReplaceAll();
+				if (!confirmed) {
+					notifyInfo('已取消覆盖现有预设');
+					return;
+				}
+			}
+
+			const result = await this.presetManager.importPresets(content, { strategy });
+			this.notifyImportResult(result);
+			onPresetsChanged();
+		} catch (error) {
+			handleError(error, {
+				context: 'SettingTab.importPresets',
+				userMessage: (err) => err.message || '导入预设失败，请检查文件内容。',
+			});
+		}
+	}
+
+	private notifyImportResult(result: ImportPresetsResult): void {
+		const importedCount = result.appliedPresets.length;
+		const renameCount = result.renamedPresets.length;
+		const renameSuffix = renameCount > 0 ? `，其中 ${renameCount} 个预设已自动重命名` : '';
+
+		if (result.strategy === 'replace') {
+			notifySuccess(`已替换全部预设，共导入 ${importedCount} 个预设${renameSuffix}`);
+		} else {
+			notifySuccess(`已导入 ${importedCount} 个预设${renameSuffix}`);
+		}
+	}
+
+	private async chooseImportStrategy(): Promise<PresetImportStrategy | null> {
+		if (this.presetManager.getPresets().length === 0) {
+			return 'replace';
+		}
+
+		const modal = new PresetImportStrategyModal(this.app);
+		return modal.openAndWait();
+	}
+
+	private async confirmReplaceAll(): Promise<boolean> {
+		const confirmModal = new SimpleConfirmModal(this.app, {
+			title: '确认替换全部预设',
+			message: '此操作将删除当前所有预设，并以导入文件中的配置完全替换，且无法撤销。确定继续吗？',
+			confirmText: '确认替换',
+			cancelText: '取消',
+			confirmClass: 'mod-warning',
+		});
+		return confirmModal.openAndWait();
+	}
+
 	/**
 	 * 添加新预设
 	 */
@@ -485,5 +665,123 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 	 */
 	private async openFieldConfigModal(preset: FrontmatterPreset, onPresetsChanged: () => void): Promise<void> {
 		new FieldConfigModal(this.app, this.presetManager, this.settingsManager, preset, onPresetsChanged).open();
+	}
+}
+
+class PresetImportStrategyModal extends Modal {
+	private resolvePromise?: (result: PresetImportStrategy | null) => void;
+	private settled = false;
+
+	openAndWait(): Promise<PresetImportStrategy | null> {
+		return new Promise<PresetImportStrategy | null>((resolve) => {
+			this.resolvePromise = resolve;
+			this.open();
+		});
+	}
+
+	onOpen(): void {
+		this.titleEl.setText('选择预设导入方式');
+		const content = this.contentEl;
+		content.empty();
+
+		content.createEl('p', { text: '请选择导入策略：' });
+
+		const list = content.createEl('ul');
+		list.createEl('li', {
+			text: '合并导入：保留现有预设，若出现相同 ID 将自动生成新 ID。',
+		});
+		list.createEl('li', {
+			text: '替换全部：删除现有预设，并以导入文件中的配置完全替换。',
+		});
+
+		const actions = content.createDiv('modal-button-container');
+		const mergeButton = actions.createEl('button', { text: '合并导入', cls: 'mod-cta' });
+		mergeButton.addEventListener('click', () => this.closeWith('merge'));
+
+		const replaceButton = actions.createEl('button', { text: '替换全部', cls: 'mod-warning' });
+		replaceButton.addEventListener('click', () => this.closeWith('replace'));
+
+		const cancelButton = actions.createEl('button', { text: '取消' });
+		cancelButton.addEventListener('click', () => this.closeWith(null));
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+		if (!this.settled) {
+			this.resolvePromise?.(null);
+		}
+	}
+
+	private closeWith(result: PresetImportStrategy | null): void {
+		if (this.settled) {
+			return;
+		}
+		this.settled = true;
+		this.resolvePromise?.(result);
+		this.close();
+	}
+}
+
+interface SimpleConfirmModalOptions {
+	title: string;
+	message: string;
+	confirmText: string;
+	cancelText: string;
+	confirmClass?: string;
+	cancelClass?: string;
+}
+
+class SimpleConfirmModal extends Modal {
+	private resolvePromise?: (result: boolean) => void;
+	private settled = false;
+	private readonly options: SimpleConfirmModalOptions;
+
+	constructor(app: App, options: SimpleConfirmModalOptions) {
+		super(app);
+		this.options = options;
+	}
+
+	openAndWait(): Promise<boolean> {
+		return new Promise<boolean>((resolve) => {
+			this.resolvePromise = resolve;
+			this.open();
+		});
+	}
+
+	onOpen(): void {
+		this.titleEl.setText(this.options.title);
+		const content = this.contentEl;
+		content.empty();
+
+		content.createEl('p', { text: this.options.message });
+
+		const actions = content.createDiv('modal-button-container');
+		const confirmButton = actions.createEl('button', {
+			text: this.options.confirmText,
+			cls: this.options.confirmClass ?? 'mod-cta',
+		});
+		confirmButton.addEventListener('click', () => this.closeWith(true));
+
+		const cancelButton = actions.createEl('button', {
+			text: this.options.cancelText,
+			cls: this.options.cancelClass,
+		});
+		cancelButton.addEventListener('click', () => this.closeWith(false));
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+		if (!this.settled) {
+			this.resolvePromise?.(false);
+		}
+	}
+
+	private closeWith(result: boolean): void {
+		if (this.settled) {
+			return;
+		}
+		this.settled = true;
+		this.resolvePromise?.(result);
+		this.close();
 	}
 }
