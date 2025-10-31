@@ -228,6 +228,7 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 		this.renderTemplaterIntegrationSection(containerEl);
 		this.renderDefaultDateFormatSetting(containerEl);
 		this.renderFrontmatterMergeSetting(containerEl);
+		this.renderDynamicPresetSelectionSetting(containerEl);
 		this.renderTemplateStatusSection(containerEl);
 		this.renderPathValidationHints(containerEl);
 
@@ -381,6 +382,23 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 	}
 
 	/**
+	 * 渲染动态预设选择开关
+	 */
+	private renderDynamicPresetSelectionSetting(containerEl: HTMLElement): void {
+		new Setting(containerEl)
+			.setName('启用动态预设选择')
+			.setDesc('启用后，当模板未配置预设时，会智能推荐匹配的预设供选择。基于模板内容和预设字段进行智能匹配，提升使用效率。')
+			.addToggle(toggle => toggle
+				.setValue(this.settings.enableDynamicPresetSelection)
+				.onChange(async (value) => {
+					this.settings.enableDynamicPresetSelection = value;
+					await this.persistSettings();
+					notifyInfo(value ? '已启用动态预设选择' : '已禁用动态预设选择');
+				})
+			);
+	}
+
+	/**
 	 * 渲染模板状态信息
 	 */
 	private renderTemplateStatusSection(containerEl: HTMLElement): void {
@@ -462,10 +480,10 @@ export class FastTemplaterSettingTab extends PluginSettingTab {
 					await this.renamePreset(preset.id, newName);
 					refreshPresetsList();
 				},
-				onConfigure: async (preset, context) => {
+				onConfigure: async (preset, _context) => {
 					await this.openFieldConfigModal(preset, refreshPresetsList);
 				},
-				onDelete: async (preset, context) => {
+				onDelete: async (preset, _context) => {
 					await this.deletePreset(preset.id);
 					refreshPresetsList();
 				},

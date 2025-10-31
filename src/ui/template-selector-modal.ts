@@ -6,6 +6,7 @@ import type { Template, TemplateLoadResult } from '@types';
 import * as TemplateEngine from '@engine';
 import { ObsidianTemplaterAdapter } from '@engine';
 import { FrontmatterManagerModal } from './frontmatter-manager-modal';
+import { DynamicPresetSelectorModal } from './dynamic-preset-selector-modal';
 import { debounce } from '@utils/timing';
 import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '@utils/notify';
 import { handleError } from '@core/error';
@@ -358,11 +359,41 @@ export class TemplateSelectorModal extends Modal {
 				this.close();
 				return;
 			} else {
-				notifyWarning(`引用的预设 "${configId}" 不存在，将使用默认插入方式`);
+				notifyWarning(`引用的预设 "${configId}" 不存在，将为您选择其他预设`);
+				this.showDynamicPresetSelector(template);
+				return;
 			}
 		}
 
-		this.insertTemplate(template);
+		// 如果模板没有配置预设且有可用预设，根据设置决定是否显示动态预设选择
+		if (this.plugin.settings.frontmatterPresets.length > 0 && this.plugin.settings.enableDynamicPresetSelection) {
+			this.showDynamicPresetSelector(template);
+		} else {
+			if (this.plugin.settings.frontmatterPresets.length > 0 && !this.plugin.settings.enableDynamicPresetSelection) {
+				notifyInfo('动态预设选择已禁用，将直接插入模板');
+			} else {
+				notifyInfo('当前没有可用预设，将直接插入模板');
+			}
+			this.insertTemplate(template);
+		}
+	}
+
+	private showDynamicPresetSelector(template: Template) {
+		new DynamicPresetSelectorModal(
+			this.app,
+			this.plugin,
+			template,
+			(selectedPreset) => {
+				if (selectedPreset) {
+					// 用户选择了预设，打开 FrontmatterManagerModal
+					new FrontmatterManagerModal(this.app, this.plugin, template, selectedPreset).open();
+				} else {
+					// 用户选择直接插入，不使用预设
+					this.insertTemplate(template);
+				}
+			}
+		).open();
+		this.close();
 	}
 
 	private getActiveEditor(): Editor | null {

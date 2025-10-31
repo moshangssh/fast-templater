@@ -1,4 +1,4 @@
-import { type App, TFile } from "obsidian";
+import { type App, type EventRef, TFile, TAbstractFile } from "obsidian";
 import { handleError } from "@core/error";
 import type { FastTemplaterSettings, Template, TemplateLoadResult } from "@types";
 import { TemplateLoadStatus } from "@types";
@@ -15,6 +15,10 @@ export class TemplateManager {
 		status: TemplateLoadStatus.IDLE,
 		count: 0,
 	};
+	private watcherRefs: EventRef[] = [];
+	private reloadTimer: number | null = null;
+	private watchedFolderPath?: string;
+	private isWatching = false;
 
 	constructor(
 		private readonly app: App,
@@ -54,6 +58,8 @@ export class TemplateManager {
 			count: 0,
 			message: "正在加载模板...",
 		};
+		// 清空当前监听路径，避免在失败情况下继续处理事件
+		this.watchedFolderPath = undefined;
 
 		try {
 			const settings = this.resolveSettings();
@@ -90,6 +96,7 @@ export class TemplateManager {
 				console.warn(`Fast Templater: 路径 "${folderPath}" 无法访问有效文件夹`);
 				return this.loadResult;
 			}
+			this.watchedFolderPath = normalizedPath;
 
 			const templateFiles = this.app.vault.getFiles().filter((file: TFile) => {
 				return file.extension === "md" && file.path.startsWith(`${normalizedPath}/`);
@@ -178,6 +185,73 @@ export class TemplateManager {
 
 	getTemplateLoadStatus(): TemplateLoadResult {
 		return { ...this.loadResult };
+	}
+
+	startWatching(): void {
+		if (this.isWatching) {
+			return;
+		}
+
+		const vault = this.app.vault;
+		this.watcherRefs = [
+			vault.on("create", this.handleVaultChange),
+			vault.on("modify", this.handleVaultChange),
+			vault.on("delete", this.handleVaultChange),
+			vault.on("rename", this.handleVaultRename),
+		];
+
+		this.isWatching = true;
+	}
+
+	stopWatching(): void {
+		if (this.reloadTimer !== null) {
+			window.clearTimeout(this.reloadTimer);
+			this.reloadTimer = null;
+		}
+
+		for (const ref of this.watcherRefs) {
+			this.app.vault.offref(ref);
+		}
+		this.watcherRefs = [];
+		this.isWatching = false;
+	}
+
+	dispose(): void {
+		this.stopWatching();
+	}
+
+	private handleVaultChange = (file: TAbstractFile): void => {
+		if (!this.shouldHandlePath(file?.path)) {
+			return;
+		}
+		this.scheduleReload();
+	};
+
+	private handleVaultRename = (file: TAbstractFile, oldPath: string): void => {
+		if (!this.shouldHandlePath(file?.path) && !this.shouldHandlePath(oldPath)) {
+			return;
+		}
+		this.scheduleReload();
+	};
+
+	private shouldHandlePath(path?: string): boolean {
+		if (!this.watchedFolderPath || !path) {
+			return false;
+		}
+
+		const normalized = this.normalizePath(path);
+		return normalized === this.watchedFolderPath || normalized.startsWith(`${this.watchedFolderPath}/`);
+	}
+
+	private scheduleReload(): void {
+		if (this.reloadTimer !== null) {
+			window.clearTimeout(this.reloadTimer);
+		}
+
+		this.reloadTimer = window.setTimeout(() => {
+			this.reloadTimer = null;
+			void this.reloadTemplates();
+		}, 300);
 	}
 }
 

@@ -25,4 +25,4 @@ data.json
 .bmad-core
 
 codebase.xml
-pack_code_to_xml.py
+__pycache__

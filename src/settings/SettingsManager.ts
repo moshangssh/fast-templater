@@ -172,6 +172,7 @@ export class SettingsManager {
 			})),
 			defaultDateFormat: this.normalizeDefaultDateFormat(settings.defaultDateFormat),
 			recentlyUsedTemplates: settings.recentlyUsedTemplates,
+			enableDynamicPresetSelection: settings.enableDynamicPresetSelection,
 		};
 	}
 

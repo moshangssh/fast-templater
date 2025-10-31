@@ -19,12 +19,15 @@ export default class FastTemplater extends Plugin {
 	async onload() {
 		await this.initializeManagers();
 		this.setupStatusBar();
+		this.templateManager.startWatching();
 		this.settingsFacade = new SettingsFacade(this.updateStatusBar, () => this.templateManager.loadTemplates());
 		this.presetManager.setSaveOptionsFactory(() => this.settingsFacade.getDefaultSaveOptions());
 		new UiRegistrar(this, this.settingsManager, this.presetManager).registerAll();
 	}
 
-	onunload() {}
+	onunload() {
+		this.templateManager?.dispose();
+	}
 
 	async loadSettings() {
 		this.settings = await this.settingsManager.load();
