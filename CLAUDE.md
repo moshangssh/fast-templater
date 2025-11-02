@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-这是一个名为 `fast-templater` 的 Obsidian 可视化模板插件，用于帮助用户通过可视化界面插入模板片段。插件基于 TypeScript 开发，使用 Obsidian API，当前处于开发阶段。
+这是一个名为 `Note Architect`（插件 ID `fast-templater`）的 Obsidian 可视化模板插件，用于帮助用户通过可视化界面插入模板片段。插件基于 TypeScript 开发，使用 Obsidian API，当前处于开发阶段。
 
 **核心功能规划**（基于 `docs/prd.md`）：
 - 可视化模板选择界面（模态窗口）
@@ -15,9 +15,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 重要注意事项
 
-### 插件 ID 更新
-- 当前 `manifest.json` 中的插件 ID 为 `sample-plugin`，需要更新为 `fast-templater`
-- 更新后，手动安装路径也需要相应调整为：`<Vault>/.obsidian/plugins/fast-templater/`
+### 插件 ID
+- 当前 `manifest.json` 中的插件 ID 为 `fast-templater`，保持与仓库目录一致
+- 手动安装路径：`<Vault>/.obsidian/plugins/fast-templater/`
 
 ### 构建产物管理
 - 不要提交 `main.js` 到版本控制（已在 `.gitignore` 中排除）
@@ -69,7 +69,7 @@ eslint ./src/
 
 ### 当前结构
 - `main.ts` - 插件主入口，包含插件生命周期管理和基础功能演示
-- `manifest.json` - 插件元数据，插件 ID 为 `sample-plugin`（需要更新为 `fast-templater`）
+- `manifest.json` - 插件元数据，插件 ID 为 `fast-templater`
 - `esbuild.config.mjs` - 构建配置，使用 esbuild 打包 TypeScript 代码
 - `package.json` - 项目依赖和脚本配置
 - `tsconfig.json` - TypeScript 编译配置

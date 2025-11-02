@@ -17,7 +17,7 @@ export interface FrontmatterPreset {
   description?: string;
 }
 
-export interface FastTemplaterSettings {
+export interface NoteArchitectSettings {
   templateFolderPath: string;
   enableTemplaterIntegration: boolean;
   enableFrontmatterMerge: boolean;
@@ -27,7 +27,7 @@ export interface FastTemplaterSettings {
   enableDynamicPresetSelection: boolean;
 }
 
-export const DEFAULT_SETTINGS: FastTemplaterSettings = {
+export const DEFAULT_SETTINGS: NoteArchitectSettings = {
   templateFolderPath: 'Templates',
   enableTemplaterIntegration: true,
   enableFrontmatterMerge: true,

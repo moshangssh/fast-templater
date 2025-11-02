@@ -1,24 +1,33 @@
 import { App, Modal, MarkdownView } from 'obsidian';
-import type FastTemplater from '@core/plugin';
+import type NoteArchitect from '@core/plugin';
 import type { FrontmatterPreset, Template, TemplateInsertionResult } from '@types';
 import * as TemplateEngine from '@engine';
 import { ObsidianTemplaterAdapter } from '@engine';
 import { handleError } from '@core/error';
 import { notifyInfo, notifySuccess, notifyWarning } from '@utils/notify';
+import { createMergedPreset } from './frontmatter/preset-field-merger';
 
 export class FrontmatterManagerModal extends Modal {
-	private plugin: FastTemplater;
-	private template: Template;
-	private preset: FrontmatterPreset;
+	private readonly plugin: NoteArchitect;
+	private readonly template: Template;
+	private readonly sourcePresets: FrontmatterPreset[];
+	private readonly mergedPreset: FrontmatterPreset;
+	private readonly sourcePresetIds: string[];
+	private readonly sourcePresetNames: string[];
 	private formData: Record<string, unknown>;
+	private readonly multiSelectFieldRefs: Map<string, HTMLElement> = new Map();
 	private resolvedDefaults: Map<string, string> = new Map();
 	private isResolving = true;
 
-	constructor(app: App, plugin: FastTemplater, template: Template, preset: FrontmatterPreset) {
+	constructor(app: App, plugin: NoteArchitect, template: Template, presets: FrontmatterPreset[]) {
 		super(app);
 		this.plugin = plugin;
 		this.template = template;
-		this.preset = preset;
+		this.sourcePresets = presets.length > 0 ? presets : [];
+		const { mergedPreset, sourcePresetIds } = createMergedPreset(this.sourcePresets);
+		this.mergedPreset = mergedPreset;
+		this.sourcePresetIds = sourcePresetIds;
+		this.sourcePresetNames = this.sourcePresets.map(preset => preset.name);
 		this.formData = {};
 	}
 
@@ -34,36 +43,39 @@ export class FrontmatterManagerModal extends Modal {
 		// 创建标题
 		contentEl.createEl('h2', {
 			text: `配置模板: ${this.template.name}`,
-			cls: 'fast-templater-form-title'
+			cls: 'note-architect-form-title'
 		});
 
 		// 创建主容器
-		const mainContainer = contentEl.createDiv('fast-templater-frontmatter-manager-container');
+		const mainContainer = contentEl.createDiv('note-architect-frontmatter-manager-container');
 
 		// 创建说明区域
-		const descriptionContainer = mainContainer.createDiv('fast-templater-form-description');
+		const descriptionContainer = mainContainer.createDiv('note-architect-form-description');
+		const descriptionText = this.sourcePresetNames.length > 1
+			? `此模板引用了多个预设（${this.sourcePresetNames.join('、')}），请填写以下字段：`
+			: `此模板引用了预设 "${this.mergedPreset.name}"，请填写以下字段：`;
 		descriptionContainer.createEl('p', {
-			text: `此模板引用了预设 "${this.preset.name}"，请填写以下字段：`,
-			cls: 'fast-templater-form-description-text'
+			text: descriptionText,
+			cls: 'note-architect-form-description-text'
 		});
 
 		// 创建表单容器
-		const formContainer = mainContainer.createDiv('fast-templater-form-container');
+		const formContainer = mainContainer.createDiv('note-architect-form-container');
 
 		// 创建操作按钮容器
-		const actionsContainer = mainContainer.createDiv('fast-templater-form-actions');
+		const actionsContainer = mainContainer.createDiv('note-architect-form-actions');
 
 		// 取消按钮
 		const cancelBtn = actionsContainer.createEl('button', {
 			text: '取消',
-			cls: 'fast-templater-form-btn fast-templater-form-btn--cancel'
+			cls: 'note-architect-form-btn note-architect-form-btn--cancel'
 		});
 		cancelBtn.onclick = () => this.handleCancel();
 
 		// 确认按钮（暂时禁用，等 Templater 解析完成后启用）
 		const confirmBtn = actionsContainer.createEl('button', {
 			text: '确认插入',
-			cls: 'mod-cta fast-templater-form-btn fast-templater-form-btn--confirm'
+			cls: 'mod-cta note-architect-form-btn note-architect-form-btn--confirm'
 		});
 		confirmBtn.disabled = true;
 		confirmBtn.onclick = () => this.handleConfirm();
@@ -89,14 +101,16 @@ export class FrontmatterManagerModal extends Modal {
 	 */
 	private renderFormFields(containerEl: HTMLElement): void {
 		containerEl.empty();
+		this.multiSelectFieldRefs.clear();
 
-		this.preset.fields.forEach((field) => {
-			const fieldContainer = containerEl.createDiv('fast-templater-form-field');
+		this.mergedPreset.fields.forEach((field) => {
+			const fieldContainer = containerEl.createDiv('note-architect-form-field');
+			fieldContainer.setAttr('data-field-key', field.key);
 
 			// 字段标签
 			fieldContainer.createEl('label', {
 				text: `${field.label}:`,
-				cls: 'fast-templater-form-label'
+				cls: 'note-architect-form-label'
 			});
 
 			// 获取解析后的默认值
@@ -115,7 +129,7 @@ export class FrontmatterManagerModal extends Modal {
 				const previewValue = (this.formData[field.key] as string) || fallbackDefault;
 				const previewInput = fieldContainer.createEl('input', {
 					type: 'text',
-					cls: 'fast-templater-form-input fast-templater-form-input--readonly'
+					cls: 'note-architect-form-input note-architect-form-input--readonly'
 				}) as HTMLInputElement;
 				previewInput.value = previewValue;
 				previewInput.readOnly = true;
@@ -139,20 +153,20 @@ export class FrontmatterManagerModal extends Modal {
 				case 'text':
 					inputEl = fieldContainer.createEl('input', {
 						type: 'text',
-						cls: 'fast-templater-form-input'
+						cls: 'note-architect-form-input'
 					}) as HTMLInputElement;
 					break;
 
 				case 'date':
 					inputEl = fieldContainer.createEl('input', {
 						type: 'date',
-						cls: 'fast-templater-form-input'
+						cls: 'note-architect-form-input'
 					}) as HTMLInputElement;
 					break;
 
 				case 'select': {
 					const selectEl = fieldContainer.createEl('select', {
-						cls: 'fast-templater-form-select'
+						cls: 'note-architect-form-select'
 					}) as HTMLSelectElement;
 					inputEl = selectEl;
 
@@ -176,7 +190,8 @@ export class FrontmatterManagerModal extends Modal {
 
 				case 'multi-select': {
 					// 多选框组
-					const multiSelectContainer = fieldContainer.createDiv('fast-templater-multi-select-container');
+					const multiSelectContainer = fieldContainer.createDiv('note-architect-multi-select-container');
+					this.multiSelectFieldRefs.set(field.key, multiSelectContainer);
 
 					// 初始化多选字段的表单数据
 					if (!this.formData[field.key]) {
@@ -185,28 +200,32 @@ export class FrontmatterManagerModal extends Modal {
 
 					if (field.options && field.options.length > 0) {
 						field.options.forEach(option => {
-							const optionContainer = multiSelectContainer.createDiv('fast-templater-checkbox-container');
+							const optionContainer = multiSelectContainer.createDiv('note-architect-checkbox-container');
 
 							const checkbox = optionContainer.createEl('input', {
 								type: 'checkbox',
 								value: option,
-								cls: 'fast-templater-form-checkbox'
+								cls: 'note-architect-form-checkbox'
 							}) as HTMLInputElement;
 
-							// 添加 change 事件监听器来实时更新表单数据
-							checkbox.addEventListener('change', () => {
-								this.collectMultiSelectData();
-							});
+						// 添加 change 事件监听器来实时更新表单数据
+						checkbox.addEventListener('change', () => {
+							this.collectMultiSelectData();
+						});
 
-							// 如果选项是默认值，则预选中
-							if (resolvedDefault === option) {
-								checkbox.checked = true;
-							}
+						// 如果选项已在表单數據中，預選中
+						const currentValue = this.formData[field.key];
+						const shouldCheck = Array.isArray(currentValue)
+							? currentValue.includes(option)
+							: resolvedDefault === option;
+						if (shouldCheck) {
+							checkbox.checked = true;
+						}
 
-							optionContainer.createEl('label', {
-								text: option,
-								cls: 'fast-templater-checkbox-label'
-							});
+						optionContainer.createEl('label', {
+							text: option,
+							cls: 'note-architect-checkbox-label'
+						});
 						});
 					} else {
 						multiSelectContainer.createEl('small', {
@@ -221,7 +240,7 @@ export class FrontmatterManagerModal extends Modal {
 					// 默认为文本输入
 					inputEl = fieldContainer.createEl('input', {
 						type: 'text',
-						cls: 'fast-templater-form-input'
+						cls: 'note-architect-form-input'
 					}) as HTMLInputElement;
 					break;
 			}
@@ -265,7 +284,7 @@ export class FrontmatterManagerModal extends Modal {
 	 */
 	private async parseTemplaterDefaults(): Promise<void> {
 		const templater = new ObsidianTemplaterAdapter(this.app);
-		for (const field of this.preset.fields) {
+		for (const field of this.mergedPreset.fields) {
 			if (field.default && field.default.includes('<%')) {
 				try {
 					if (this.plugin.settings.enableTemplaterIntegration && templater.isAvailable()) {
@@ -281,7 +300,7 @@ export class FrontmatterManagerModal extends Modal {
 						this.resolvedDefaults.set(field.key, field.default);
 					}
 				} catch (error) {
-					console.warn(`Fast Templater: 字段 "${field.label}" 的默认值 Templater 解析失败`, error);
+					console.warn(`Note Architect: 字段 "${field.label}" 的默认值 Templater 解析失败`, error);
 					this.resolvedDefaults.set(field.key, field.default);
 				}
 			} else {
@@ -295,24 +314,18 @@ export class FrontmatterManagerModal extends Modal {
 	 * 收集多选框数据
 	 */
 	private collectMultiSelectData(): void {
-		this.preset.fields.forEach(field => {
-			if (field.type === 'multi-select') {
-				const fieldContainer = this.contentEl.querySelector('.fast-templater-form-container');
-				if (!fieldContainer) return;
+		for (const [fieldKey, container] of this.multiSelectFieldRefs.entries()) {
+			const checkboxes = container.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
+			const selectedValues: string[] = [];
 
-				// 找到当前字段的所有 checkbox
-				const checkboxes = fieldContainer.querySelectorAll('input[type="checkbox"]') as unknown as NodeListOf<HTMLInputElement>;
-				const selectedValues: string[] = [];
+			checkboxes.forEach((checkbox) => {
+				if (checkbox.checked && checkbox.value) {
+					selectedValues.push(checkbox.value);
+				}
+			});
 
-				checkboxes.forEach(checkbox => {
-					if ((checkbox as HTMLInputElement).checked && (checkbox as HTMLInputElement).value) {
-						selectedValues.push((checkbox as HTMLInputElement).value);
-					}
-				});
-
-				this.formData[field.key] = selectedValues;
-			}
-		});
+			this.formData[fieldKey] = selectedValues;
+		}
 	}
 
 	
@@ -371,19 +384,19 @@ export class FrontmatterManagerModal extends Modal {
 	private async handleConfirm(): Promise<void> {
 		this.collectMultiSelectData();
 
-		const validation = this.plugin.presetManager.validateFormData(this.preset, this.formData);
+		const validation = this.plugin.presetManager.validateFormData(this.mergedPreset, this.formData);
 		if (!validation.isValid) {
 			this.notifyValidationFailure(validation.errors);
 			return;
 		}
 
 		try {
-			const userFrontmatter = TemplateEngine.convertFormDataToFrontmatter(this.preset, this.formData);
+			const userFrontmatter = TemplateEngine.convertFormDataToFrontmatter(this.mergedPreset, this.formData);
 			const preparation = await TemplateEngine.prepareTemplateWithUserInput(
 				this.app,
 				this.plugin,
 				this.template,
-				this.preset,
+				this.mergedPreset,
 				userFrontmatter,
 			);
 
@@ -421,7 +434,7 @@ export class FrontmatterManagerModal extends Modal {
 				await this.plugin.addRecentTemplate(this.template.id);
 				this.close();
 			} catch (error) {
-				console.error('Fast Templater: 插入操作失败', error);
+				console.error('Note Architect: 插入操作失败', error);
 
 				try {
 					editor.replaceSelection(preparation.templateBody);
@@ -441,7 +454,7 @@ export class FrontmatterManagerModal extends Modal {
 					await this.plugin.addRecentTemplate(this.template.id);
 					this.close();
 				} catch (fallbackError) {
-					console.error('Fast Templater: 回退插入也失败', fallbackError);
+					console.error('Note Architect: 回退插入也失败', fallbackError);
 					throw new Error('模板插入完全失败，请手动复制模板内容');
 				}
 			}

@@ -28,7 +28,7 @@ export function handleError(error: unknown, options?: HandleErrorOptions): Error
 	const normalizedError = ensureError(error);
 	const contextPrefix = options?.context ? `[${options.context}] ` : '';
 
-	console.error(`Fast Templater: ${contextPrefix}${normalizedError.message}`, normalizedError);
+	console.error(`Note Architect: ${contextPrefix}${normalizedError.message}`, normalizedError);
 
 	if (options?.userMessage) {
 		const finalMessage = typeof options.userMessage === 'function'

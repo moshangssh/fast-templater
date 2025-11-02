@@ -1,10 +1,11 @@
 import { type App, type EventRef, TFile, TAbstractFile } from "obsidian";
 import { handleError } from "@core/error";
-import type { FastTemplaterSettings, Template, TemplateLoadResult } from "@types";
+import type { NoteArchitectSettings, Template, TemplateLoadResult } from "@types";
 import { TemplateLoadStatus } from "@types";
 import { notifyError, notifySuccess, notifyWarning } from "@utils/notify";
+import { normalizePath } from "@utils/path";
 
-type SettingsResolver = () => FastTemplaterSettings;
+type SettingsResolver = () => NoteArchitectSettings;
 
 /**
  * 模板管理器负责处理模板文件的加载、缓存与检索，保持插件主类的单一职责。
@@ -26,13 +27,6 @@ export class TemplateManager {
 	) {}
 
 	/**
-	 * 规范化路径，移除首尾空格和斜杠。
-	 */
-	private normalizePath(path: string): string {
-		return path.trim().replace(/^\/+|\/+$/g, "");
-	}
-
-	/**
 	 * 验证模板文件夹路径是否存在。
 	 */
 	async validateTemplatePath(path: string): Promise<boolean> {
@@ -41,7 +35,7 @@ export class TemplateManager {
 		}
 
 		try {
-			const normalizedPath = this.normalizePath(path);
+			const normalizedPath = normalizePath(path);
 			const folder = this.app.vault.getAbstractFileByPath(normalizedPath);
 			return folder !== null && "children" in folder;
 		} catch {
@@ -70,7 +64,7 @@ export class TemplateManager {
 					count: 0,
 					message: "模板文件夹路径未设置",
 				};
-				console.log("Fast Templater: 模板文件夹路径未设置");
+				console.log("Note Architect: 模板文件夹路径未设置");
 				return this.loadResult;
 			}
 
@@ -81,11 +75,11 @@ export class TemplateManager {
 					count: 0,
 					message: `模板文件夹路径 "${folderPath}" 无效或不存在`,
 				};
-				console.warn(`Fast Templater: 路径 "${folderPath}" 无效或不存在`);
+				console.warn(`Note Architect: 路径 "${folderPath}" 无效或不存在`);
 				return this.loadResult;
 			}
 
-			const normalizedPath = this.normalizePath(folderPath);
+			const normalizedPath = normalizePath(folderPath);
 			const folder = this.app.vault.getAbstractFileByPath(normalizedPath);
 			if (!folder || !("children" in folder)) {
 				this.loadResult = {
@@ -93,7 +87,7 @@ export class TemplateManager {
 					count: 0,
 					message: `模板文件夹路径 "${folderPath}" 无法访问`,
 				};
-				console.warn(`Fast Templater: 路径 "${folderPath}" 无法访问有效文件夹`);
+				console.warn(`Note Architect: 路径 "${folderPath}" 无法访问有效文件夹`);
 				return this.loadResult;
 			}
 			this.watchedFolderPath = normalizedPath;
@@ -117,7 +111,7 @@ export class TemplateManager {
 					this.templates.push(template);
 				} catch (error) {
 					errorCount++;
-					console.warn(`Fast Templater: 无法读取模板文件 ${file.path}`, error);
+					console.warn(`Note Architect: 无法读取模板文件 ${file.path}`, error);
 				}
 			}
 
@@ -137,9 +131,9 @@ export class TemplateManager {
 				};
 			}
 
-			console.log(`Fast Templater: ${this.loadResult.message}`);
+			console.log(`Note Architect: ${this.loadResult.message}`);
 			if (errorCount > 0) {
-				console.warn(`Fast Templater: ${errorCount} 个文件读取失败`);
+				console.warn(`Note Architect: ${errorCount} 个文件读取失败`);
 			}
 
 			return this.loadResult;
@@ -239,7 +233,7 @@ export class TemplateManager {
 			return false;
 		}
 
-		const normalized = this.normalizePath(path);
+		const normalized = normalizePath(path);
 		return normalized === this.watchedFolderPath || normalized.startsWith(`${this.watchedFolderPath}/`);
 	}
 

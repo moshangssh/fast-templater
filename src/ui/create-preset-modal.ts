@@ -37,10 +37,10 @@ export class CreatePresetModal extends Modal {
 		});
 
 		// 创建表单容器
-		const formContainer = contentEl.createDiv('fast-templater-create-preset-form');
+		const formContainer = contentEl.createDiv('note-architect-create-preset-form');
 
 		// 预设名称输入框
-		const nameContainer = formContainer.createDiv('fast-templater-form-group');
+		const nameContainer = formContainer.createDiv('note-architect-form-group');
 		nameContainer.createEl('label', { text: '预设名称 *' });
 		nameContainer.createEl('small', {
 			text: '用于在设置界面中显示的友好名称，系统会基于此自动生成引用ID'
@@ -48,14 +48,14 @@ export class CreatePresetModal extends Modal {
 		this.nameInput = nameContainer.createEl('input', {
 			type: 'text',
 			placeholder: '例如: 项目模板配置',
-			cls: 'fast-templater-form-input'
+			cls: 'note-architect-form-input'
 		});
 
 		// 验证消息容器
-		this.validationMessage = formContainer.createDiv('fast-templater-validation-message');
+		this.validationMessage = formContainer.createDiv('note-architect-validation-message');
 
 		// 操作按钮容器
-		const actionsContainer = contentEl.createDiv('fast-templater-form-actions');
+		const actionsContainer = contentEl.createDiv('note-architect-form-actions');
 
 		// 取消按钮
 		const cancelBtn = actionsContainer.createEl('button', {
@@ -115,13 +115,13 @@ export class CreatePresetModal extends Modal {
 		if (!nameValue) {
 			this.validationMessage.createEl('p', {
 				text: '⚠️ 预设名称不能为空',
-				cls: 'fast-templater-validation-error'
+				cls: 'note-architect-validation-error'
 			});
 			return;
 		}
 
 		const message = this.validationMessage.createEl('p', {
-			cls: 'fast-templater-validation-success'
+			cls: 'note-architect-validation-success'
 		});
 
 		message.appendText('✅ 将自动生成引用ID：');

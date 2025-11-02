@@ -1,15 +1,16 @@
 import { MarkdownView, TFile } from 'obsidian';
 import type { Plugin } from 'obsidian';
-import type FastTemplater from '@core/plugin';
+import type NoteArchitect from '@core/plugin';
 import type { PresetManager } from '@presets';
 import type { SettingsManager } from '@settings';
 import type { FrontmatterPreset, Template } from '@types';
-import { FastTemplaterSettingTab, TemplatePresetBindingModal, TemplateSelectorModal } from '@ui';
+import { NoteArchitectSettingTab, TemplatePresetBindingModal, TemplateSelectorModal } from '@ui';
 import { handleError } from '@core/error';
 import { parseFrontmatter, removeFrontmatterField, updateFrontmatter } from '@utils/frontmatter-editor';
 import { notifyInfo, notifySuccess, notifyWarning } from '@utils/notify';
-
-const CONFIG_KEY = 'fast-templater-config';
+import { normalizePath } from '@utils/path';
+import { PRESET_CONFIG_KEY } from '@core/constants';
+import { normalizeConfigIds } from '@utils/note-architect-config';
 
 export class UiRegistrar {
   constructor(
@@ -26,9 +27,9 @@ export class UiRegistrar {
 
   private registerRibbon(): void {
     const ribbonIconEl = this.plugin.addRibbonIcon('layout-template', '插入可视化模板', () => {
-      new TemplateSelectorModal(this.plugin.app, this.getFastTemplater()).open();
+      new TemplateSelectorModal(this.plugin.app, this.getNoteArchitect()).open();
     });
-    ribbonIconEl.addClass('fast-templater-ribbon-class');
+    ribbonIconEl.addClass('note-architect-ribbon-class');
   }
 
   private registerCommands(): void {
@@ -63,7 +64,7 @@ export class UiRegistrar {
       name: '插入可视化模板',
       icon: 'layout-template',
       callback: () => {
-        new TemplateSelectorModal(this.plugin.app, this.getFastTemplater()).open();
+        new TemplateSelectorModal(this.plugin.app, this.getNoteArchitect()).open();
       },
     });
 
@@ -77,7 +78,7 @@ export class UiRegistrar {
 
   private registerSettingTab(): void {
     this.plugin.addSettingTab(
-      new FastTemplaterSettingTab(this.plugin.app, this.getFastTemplater(), this.settingsManager, this.presetManager),
+      new NoteArchitectSettingTab(this.plugin.app, this.getNoteArchitect(), this.settingsManager, this.presetManager),
     );
   }
 
@@ -88,11 +89,11 @@ export class UiRegistrar {
       return false;
     }
 
-    const fastTemplater = this.getFastTemplater();
-    const folderPath = fastTemplater.settings.templateFolderPath?.trim();
+    const noteArchitect = this.getNoteArchitect();
+    const folderPath = noteArchitect.settings.templateFolderPath?.trim();
     if (!folderPath) {
       if (!checking) {
-        notifyWarning('请先在 Fast Templater 设置中配置模板文件夹路径。');
+        notifyWarning('请先在 Note Architect 设置中配置模板文件夹路径。');
       }
       return false;
     }
@@ -128,16 +129,14 @@ export class UiRegistrar {
         content,
       };
       const parsed = parseFrontmatter(content);
-      const existing = typeof parsed.frontmatter[CONFIG_KEY] === 'string'
-        ? (parsed.frontmatter[CONFIG_KEY] as string)
-        : undefined;
+      const existingIds = normalizeConfigIds(parsed.frontmatter[PRESET_CONFIG_KEY]);
 
       new TemplatePresetBindingModal(this.plugin.app, {
         template,
         presets,
-        existingPresetId: existing,
+        existingIds,
         onBind: async (preset) => await this.bindPresetToTemplate(file, preset),
-        onClear: existing ? async () => await this.clearPresetBinding(file) : undefined,
+        onClear: async () => await this.clearPresetBinding(file),
       }).open();
     } catch (error) {
       handleError(error, {
@@ -152,11 +151,9 @@ export class UiRegistrar {
       const vault = this.plugin.app.vault;
       const content = await vault.read(file);
       const parsed = parseFrontmatter(content);
-      const currentId = typeof parsed.frontmatter[CONFIG_KEY] === 'string'
-        ? (parsed.frontmatter[CONFIG_KEY] as string)
-        : undefined;
+      const currentIds = normalizeConfigIds(parsed.frontmatter[PRESET_CONFIG_KEY]);
 
-      if (currentId === preset.id) {
+      if (currentIds.includes(preset.id)) {
         notifyInfo(`模板已绑定到预设 “${preset.name}”。`);
         return;
       }
@@ -165,7 +162,7 @@ export class UiRegistrar {
         content,
         (frontmatter) => ({
           ...frontmatter,
-          [CONFIG_KEY]: preset.id,
+          [PRESET_CONFIG_KEY]: [...currentIds, preset.id],
         }),
         parsed,
       );
@@ -177,7 +174,7 @@ export class UiRegistrar {
 
       await vault.modify(file, result.content);
       notifySuccess(`模板 “${file.basename}” 已绑定预设 “${preset.name}”。`);
-      void this.getFastTemplater().templateManager.reloadTemplates();
+      void this.getNoteArchitect().templateManager.reloadTemplates();
     } catch (error) {
       handleError(error, {
         context: 'UiRegistrar.bindPresetToTemplate',
@@ -192,14 +189,8 @@ export class UiRegistrar {
       const vault = this.plugin.app.vault;
       const content = await vault.read(file);
       const parsed = parseFrontmatter(content);
-      const hasBinding = typeof parsed.frontmatter[CONFIG_KEY] === 'string';
 
-      if (!hasBinding) {
-        notifyInfo('当前模板未绑定任何预设。');
-        return;
-      }
-
-      const result = removeFrontmatterField(content, CONFIG_KEY, parsed);
+      const result = removeFrontmatterField(content, PRESET_CONFIG_KEY, parsed);
       if (!result.changed) {
         notifyInfo('当前模板未绑定任何预设。');
         return;
@@ -207,7 +198,7 @@ export class UiRegistrar {
 
       await vault.modify(file, result.content);
       notifySuccess(`模板 “${file.basename}” 已解除预设绑定。`);
-      void this.getFastTemplater().templateManager.reloadTemplates();
+      void this.getNoteArchitect().templateManager.reloadTemplates();
     } catch (error) {
       handleError(error, {
         context: 'UiRegistrar.clearPresetBinding',
@@ -218,20 +209,16 @@ export class UiRegistrar {
   }
 
   private isInsideTemplateFolder(file: TFile, folderPath: string): boolean {
-    const normalizedFolder = this.normalizePath(folderPath);
+    const normalizedFolder = normalizePath(folderPath);
     if (!normalizedFolder) {
       return false;
     }
 
-    const normalizedFilePath = this.normalizePath(file.path);
+    const normalizedFilePath = normalizePath(file.path);
     return normalizedFilePath.startsWith(`${normalizedFolder}/`);
   }
 
-  private normalizePath(path: string): string {
-    return path.replace(/\\/g, '/').trim().replace(/^\/*|\/*$/g, '');
-  }
-
-  private getFastTemplater(): FastTemplater {
-    return this.plugin as FastTemplater;
+  private getNoteArchitect(): NoteArchitect {
+    return this.plugin as NoteArchitect;
   }
 }

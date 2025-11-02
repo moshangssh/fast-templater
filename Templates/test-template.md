@@ -13,7 +13,7 @@
 
 ```javascript
 function hello() {
-    console.log("Hello, Fast Templater!");
+    console.log("Hello, Note Architect!");
 }
 ```
 

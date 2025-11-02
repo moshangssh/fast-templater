@@ -1,12 +1,12 @@
 import { App, Modal, Setting } from 'obsidian';
-import type FastTemplater from '@core/plugin';
+import type NoteArchitect from '@core/plugin';
 import type { FrontmatterPreset, Template } from '@types';
 import { handleError } from '@core/error';
 import { notifyInfo, notifyWarning } from '@utils/notify';
 import { PresetMatcher, type PresetMatchResult } from '@utils/preset-matcher';
 
 export class DynamicPresetSelectorModal extends Modal {
-	private plugin: FastTemplater;
+	private plugin: NoteArchitect;
 	private template: Template;
 	private onPresetSelected: (preset: FrontmatterPreset | null) => void;
 	private searchQuery = '';
@@ -17,7 +17,7 @@ export class DynamicPresetSelectorModal extends Modal {
 
 	constructor(
 		app: App,
-		plugin: FastTemplater,
+		plugin: NoteArchitect,
 		template: Template,
 		onPresetSelected: (preset: FrontmatterPreset | null) => void
 	) {
@@ -52,14 +52,14 @@ export class DynamicPresetSelectorModal extends Modal {
 		// 创建标题
 		contentEl.createEl('h2', {
 			text: '选择预设',
-			cls: 'fast-templater-form-title'
+			cls: 'note-architect-form-title'
 		});
 
 		// 创建说明区域
-		const descriptionContainer = contentEl.createDiv('fast-templater-form-description');
+		const descriptionContainer = contentEl.createDiv('note-architect-form-description');
 		descriptionContainer.createEl('p', {
 			text: `模板 "${this.template.name}" 未配置预设，请从现有预设中选择一个：`,
-			cls: 'fast-templater-form-description-text'
+			cls: 'note-architect-form-description-text'
 		});
 
 		// 添加智能推荐提示
@@ -67,7 +67,7 @@ export class DynamicPresetSelectorModal extends Modal {
 		if (hasRecommendations) {
 			const recommendationHint = descriptionContainer.createEl('p', {
 				text: '🎯 已为您智能推荐匹配度较高的预设',
-				cls: 'fast-templater-recommendation-hint'
+				cls: 'note-architect-recommendation-hint'
 			});
 			recommendationHint.style.fontSize = '12px';
 			recommendationHint.style.color = 'var(--text-accent)';
@@ -75,7 +75,7 @@ export class DynamicPresetSelectorModal extends Modal {
 		}
 
 		// 搜索和过滤选项
-		const searchContainer = contentEl.createDiv('fast-templater-search-container');
+		const searchContainer = contentEl.createDiv('note-architect-search-container');
 		searchContainer.style.display = 'flex';
 		searchContainer.style.alignItems = 'center';
 		searchContainer.style.gap = '10px';
@@ -84,14 +84,14 @@ export class DynamicPresetSelectorModal extends Modal {
 		const searchInput = searchContainer.createEl('input', {
 			type: 'text',
 			placeholder: '搜索预设...',
-			cls: 'fast-templater-search-input'
+			cls: 'note-architect-search-input'
 		});
 		searchInput.style.flex = '1';
 
 		// 添加显示推荐选项
 		const showRecommendationsLabel = searchContainer.createEl('label', {
 			text: '显示推荐',
-			cls: 'fast-templater-checkbox-label'
+			cls: 'note-architect-checkbox-label'
 		});
 		showRecommendationsLabel.style.display = 'flex';
 		showRecommendationsLabel.style.alignItems = 'center';
@@ -110,7 +110,7 @@ export class DynamicPresetSelectorModal extends Modal {
 		});
 
 		// 创建预设列表容器
-		const presetListContainer = contentEl.createDiv('fast-templater-preset-list-container');
+		const presetListContainer = contentEl.createDiv('note-architect-preset-list-container');
 		presetListContainer.style.maxHeight = '300px';
 		presetListContainer.style.overflowY = 'auto';
 
@@ -142,7 +142,7 @@ export class DynamicPresetSelectorModal extends Modal {
 			presetListContainer.empty();
 
 			if (this.filteredPresets.length === 0) {
-				const emptyMessage = presetListContainer.createDiv('fast-templater-empty-message');
+				const emptyMessage = presetListContainer.createDiv('note-architect-empty-message');
 				emptyMessage.textContent = this.searchQuery
 					? '未找到匹配的预设'
 					: '暂无可用预设，请先在设置中创建预设';
@@ -151,7 +151,7 @@ export class DynamicPresetSelectorModal extends Modal {
 
 			this.filteredPresets.forEach((matchResult, index) => {
 				const preset = matchResult.preset;
-				const presetItem = presetListContainer.createDiv('fast-templater-preset-item');
+				const presetItem = presetListContainer.createDiv('note-architect-preset-item');
 				presetItem.style.padding = '12px';
 				presetItem.style.border = '1px solid var(--background-modifier-border)';
 				presetItem.style.borderRadius = '6px';
@@ -169,7 +169,7 @@ export class DynamicPresetSelectorModal extends Modal {
 				if (matchResult.score >= 0.5) {
 					const recommendationBadge = presetItem.createEl('span', {
 						text: this.getRecommendationBadge(matchResult.score),
-						cls: 'fast-templater-recommendation-badge'
+						cls: 'note-architect-recommendation-badge'
 					});
 					recommendationBadge.style.display = 'inline-block';
 					recommendationBadge.style.padding = '2px 6px';
@@ -190,7 +190,7 @@ export class DynamicPresetSelectorModal extends Modal {
 				// 预设名称
 				const nameEl = presetItem.createEl('div', {
 					text: preset.name,
-					cls: 'fast-templater-preset-name'
+					cls: 'note-architect-preset-name'
 				});
 				nameEl.style.fontWeight = 'bold';
 				nameEl.style.marginBottom = '4px';
@@ -198,7 +198,7 @@ export class DynamicPresetSelectorModal extends Modal {
 				// 预设ID
 				const idEl = presetItem.createEl('div', {
 					text: `ID: ${preset.id}`,
-					cls: 'fast-templater-preset-id'
+					cls: 'note-architect-preset-id'
 				});
 				idEl.style.fontSize = '12px';
 				idEl.style.color = 'var(--text-muted)';
@@ -207,7 +207,7 @@ export class DynamicPresetSelectorModal extends Modal {
 				const fieldsCount = preset.fields?.length || 0;
 				const metaInfo = presetItem.createEl('div', {
 					text: `字段: ${fieldsCount} | 匹配度: ${Math.round(matchResult.score * 100)}%`,
-					cls: 'fast-templater-preset-meta'
+					cls: 'note-architect-preset-meta'
 				});
 				metaInfo.style.fontSize = '12px';
 				metaInfo.style.color = 'var(--text-muted)';
@@ -217,7 +217,7 @@ export class DynamicPresetSelectorModal extends Modal {
 				if (matchResult.reasons.length > 0) {
 					const reasonsEl = presetItem.createEl('div', {
 						text: `✓ ${matchResult.reasons.join(', ')}`,
-						cls: 'fast-templater-match-reasons'
+						cls: 'note-architect-match-reasons'
 					});
 					reasonsEl.style.fontSize = '11px';
 					reasonsEl.style.color = 'var(--text-accent)';
@@ -278,7 +278,7 @@ export class DynamicPresetSelectorModal extends Modal {
 		});
 
 		// 按钮区域
-		const buttonContainer = contentEl.createDiv('fast-templater-button-container');
+		const buttonContainer = contentEl.createDiv('note-architect-button-container');
 		buttonContainer.style.display = 'flex';
 		buttonContainer.style.justifyContent = 'flex-end';
 		buttonContainer.style.gap = '10px';

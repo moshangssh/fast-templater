@@ -20,23 +20,23 @@ export class TemplateSelectorLayout {
 
 		this.contentEl.createEl('h2', {
 			text: '选择模板',
-			cls: 'fast-templater-modal-title'
+			cls: 'note-architect-modal-title'
 		});
 
-		const mainContainerEl = this.contentEl.createDiv('fast-templater-main-container');
-		const leftContainerEl = mainContainerEl.createDiv('fast-templater-left-container');
+		const mainContainerEl = this.contentEl.createDiv('note-architect-main-container');
+		const leftContainerEl = mainContainerEl.createDiv('note-architect-left-container');
 
 		const searchHostEl = leftContainerEl.createDiv();
-		const listContainerEl = leftContainerEl.createDiv('fast-templater-modal-container');
+		const listContainerEl = leftContainerEl.createDiv('note-architect-modal-container');
 
-		const previewContainerEl = mainContainerEl.createDiv('fast-templater-preview-container');
+		const previewContainerEl = mainContainerEl.createDiv('note-architect-preview-container');
 		previewContainerEl.createEl('h3', {
 			text: '预览',
-			cls: 'fast-templater-preview-title'
+			cls: 'note-architect-preview-title'
 		});
-		const previewContentEl = previewContainerEl.createDiv('fast-templater-preview-content');
+		const previewContentEl = previewContainerEl.createDiv('note-architect-preview-content');
 
-		const footerEl = this.contentEl.createDiv('fast-templater-modal-footer');
+		const footerEl = this.contentEl.createDiv('note-architect-modal-footer');
 
 		return {
 			searchHostEl,

@@ -50,44 +50,44 @@ export function renderPresetItemUI(
 	options: RenderPresetItemOptions,
 ): RenderPresetItemContext {
 	const { containerEl, preset, callbacks } = options;
-	const itemEl = containerEl.createDiv('fast-templater-preset-item');
+	const itemEl = containerEl.createDiv('note-architect-preset-item');
 
 	// 主内容区域
-	const contentContainer = itemEl.createDiv('fast-templater-preset-content');
+	const contentContainer = itemEl.createDiv('note-architect-preset-content');
 
 	// 名称输入框
-	const nameContainer = contentContainer.createDiv('fast-templater-preset-name');
+	const nameContainer = contentContainer.createDiv('note-architect-preset-name');
 	const nameInputEl = nameContainer.createEl('input', {
 		type: 'text',
 		value: preset.name,
-		cls: 'fast-templater-preset-name-input',
+		cls: 'note-architect-preset-name-input',
 	}) as HTMLInputElement;
 
 	// 信息区域
-	const infoEl = contentContainer.createDiv('fast-templater-preset-info');
+	const infoEl = contentContainer.createDiv('note-architect-preset-info');
 	const fieldCountText = preset.fields.length === 1 ? '1 个字段' : `${preset.fields.length} 个字段`;
 	infoEl.createEl('span', {
 		text: fieldCountText,
-		cls: 'fast-templater-preset-field-count',
+		cls: 'note-architect-preset-field-count',
 	});
 	infoEl.createEl('span', {
 		text: '•',
-		cls: 'fast-templater-preset-separator',
+		cls: 'note-architect-preset-separator',
 	});
 	infoEl.createEl('span', {
 		text: `ID: ${preset.id}`,
-		cls: 'fast-templater-preset-id',
+		cls: 'note-architect-preset-id',
 	});
 
 	// 操作按钮
-	const actionsContainer = itemEl.createDiv('fast-templater-preset-actions');
+	const actionsContainer = itemEl.createDiv('note-architect-preset-actions');
 	const configButtonEl = actionsContainer.createEl('button', {
 		text: '配置字段',
-		cls: 'fast-templater-preset-btn-config',
+		cls: 'note-architect-preset-btn-config',
 	}) as HTMLButtonElement;
 	const deleteButtonEl = actionsContainer.createEl('button', {
 		text: '删除',
-		cls: 'fast-templater-preset-btn-delete',
+		cls: 'note-architect-preset-btn-delete',
 	}) as HTMLButtonElement;
 
 	const context: RenderPresetItemContext = {
@@ -173,7 +173,7 @@ export function renderPresetListUI(options: RenderPresetListOptions): void {
 	containerEl.empty();
 
 	if (presets.length === 0) {
-		const emptyEl = containerEl.createDiv('fast-templater-empty-presets');
+		const emptyEl = containerEl.createDiv('note-architect-empty-presets');
 		emptyEl.createEl('p', {
 			text: emptyStateMessage,
 			cls: 'setting-item-description',

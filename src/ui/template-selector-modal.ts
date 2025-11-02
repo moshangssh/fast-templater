@@ -1,5 +1,5 @@
 import { App, Editor, MarkdownView, Modal } from 'obsidian';
-import type FastTemplater from '@core/plugin';
+import type NoteArchitect from '@core/plugin';
 import { TemplateManager } from '@templates';
 import { TemplateLoadStatus } from '@types';
 import type { Template, TemplateLoadResult } from '@types';
@@ -10,13 +10,15 @@ import { DynamicPresetSelectorModal } from './dynamic-preset-selector-modal';
 import { debounce } from '@utils/timing';
 import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '@utils/notify';
 import { handleError } from '@core/error';
+import { PRESET_CONFIG_KEY } from '@core/constants';
+import { normalizeConfigIds, collectMatchingPresets } from '@utils/note-architect-config';
 import { TemplateSelectorLayout, type TemplateSelectorLayoutRefs } from './template-selector/template-selector-layout';
 import { TemplateSearchView } from './template-selector/template-search-view';
 import { TemplateListView, type TemplateListStatus } from './template-selector/template-list-view';
 import { TemplatePreviewPanel } from './template-selector/template-preview-panel';
 
 export class TemplateSelectorModal extends Modal {
-	private readonly plugin: FastTemplater;
+	private readonly plugin: NoteArchitect;
 	private readonly templateManager: TemplateManager;
 	private templates: Template[];
 	private searchQuery = '';
@@ -34,7 +36,7 @@ export class TemplateSelectorModal extends Modal {
 	private listView: TemplateListView | null = null;
 	private previewPanel: TemplatePreviewPanel | null = null;
 
-	constructor(app: App, plugin: FastTemplater) {
+	constructor(app: App, plugin: NoteArchitect) {
 		super(app);
 		this.plugin = plugin;
 		this.templateManager = plugin.templateManager;
@@ -340,7 +342,7 @@ export class TemplateSelectorModal extends Modal {
 			icon: '',
 			title: '搜索无结果',
 			message: `未找到包含 "${this.searchQuery}" 的模板。`,
-			containerClass: 'fast-templater-no-results'
+			containerClass: 'note-architect-no-results'
 		};
 	}
 
@@ -350,19 +352,24 @@ export class TemplateSelectorModal extends Modal {
 		this.updateTemplateList();
 
 		const templateFM = TemplateEngine.parseTemplateContent(template.content).frontmatter;
-		const configId = templateFM['fast-templater-config'] as string;
+		const configIds = normalizeConfigIds(templateFM[PRESET_CONFIG_KEY]);
 
-		if (configId) {
-			const preset = this.plugin.settings.frontmatterPresets.find(p => p.id === configId);
-			if (preset) {
-				new FrontmatterManagerModal(this.app, this.plugin, template, preset).open();
+		if (configIds.length > 0) {
+			const { matched, missing } = collectMatchingPresets(configIds, this.plugin.settings.frontmatterPresets);
+
+			if (missing.length > 0) {
+				notifyWarning(`以下预设不存在：${missing.join('、')}，将略过这些预设。`);
+			}
+
+			if (matched.length > 0) {
+				new FrontmatterManagerModal(this.app, this.plugin, template, matched).open();
 				this.close();
 				return;
-			} else {
-				notifyWarning(`引用的预设 "${configId}" 不存在，将为您选择其他预设`);
-				this.showDynamicPresetSelector(template);
-				return;
 			}
+
+			notifyWarning('模板引用的预设均不存在，将为您选择其他预设');
+			this.showDynamicPresetSelector(template);
+			return;
 		}
 
 		// 如果模板没有配置预设且有可用预设，根据设置决定是否显示动态预设选择
@@ -386,7 +393,7 @@ export class TemplateSelectorModal extends Modal {
 			(selectedPreset) => {
 				if (selectedPreset) {
 					// 用户选择了预设，打开 FrontmatterManagerModal
-					new FrontmatterManagerModal(this.app, this.plugin, template, selectedPreset).open();
+					new FrontmatterManagerModal(this.app, this.plugin, template, [selectedPreset]).open();
 				} else {
 					// 用户选择直接插入，不使用预设
 					this.insertTemplate(template);
@@ -521,7 +528,7 @@ export class TemplateSelectorModal extends Modal {
 
 		const closeBtn = this.layoutRefs.footerEl.createEl('button', {
 			text: '关闭',
-			cls: 'fast-templater-ghost-button'
+			cls: 'note-architect-ghost-button'
 		});
 		closeBtn.type = 'button';
 		closeBtn.onclick = () => this.close();

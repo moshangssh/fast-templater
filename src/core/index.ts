@@ -1,4 +1,4 @@
-import FastTemplater from "./plugin";
+import NoteArchitect from "./plugin";
 
-export { FastTemplater };
-export default FastTemplater;
+export { NoteArchitect };
+export default NoteArchitect;

@@ -1,4 +1,4 @@
-import * as yaml from 'js-yaml';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 export interface ParsedFrontmatter {
     frontmatter: Record<string, unknown>;
@@ -31,7 +31,7 @@ export function parseFrontmatter(content: string): ParsedFrontmatter {
 
     const [, frontmatterText] = match;
     const body = content.slice(match[0].length);
-    const frontmatter = (yaml.load(frontmatterText) ?? {}) as Record<string, unknown>;
+    const frontmatter = (parseYaml(frontmatterText) ?? {}) as Record<string, unknown>;
 
     return {
         frontmatter,
@@ -89,11 +89,10 @@ function composeContent(frontmatter: Record<string, unknown>, parsed: ParsedFron
         return parsed.body;
     }
 
-    const yamlText = yaml.dump(frontmatter, {
+    const yamlText = stringifyYaml(frontmatter, {
         indent: 2,
-        lineWidth: -1,
-        noRefs: true,
-        sortKeys: false,
+        lineWidth: 0,
+        aliasDuplicateObjects: false,
     });
     const normalizedYaml = yamlText.endsWith('\n') ? yamlText : `${yamlText}\n`;
     const header = `---${newline}${normalizedYaml}---${newline}`;

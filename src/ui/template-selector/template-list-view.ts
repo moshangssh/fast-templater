@@ -54,7 +54,7 @@ export class TemplateListView {
 	renderStatus(status: TemplateListStatus) {
 		this.resetState();
 		const containerClass = [
-			'fast-templater-status-container',
+			'note-architect-status-container',
 			status.containerClass ?? ''
 		].filter(Boolean).join(' ');
 
@@ -129,20 +129,20 @@ export class TemplateListView {
 		onClick: (template: Template) => void,
 		isAllSection: boolean
 	): HTMLElement {
-		this.containerEl.createEl('h4', { text: title, cls: 'fast-templater-list-header' });
-		const listEl = this.containerEl.createEl('ul', { cls: 'fast-templater-template-list' });
+		this.containerEl.createEl('h4', { text: title, cls: 'note-architect-list-header' });
+		const listEl = this.containerEl.createEl('ul', { cls: 'note-architect-template-list' });
 		templates.forEach((template, index) => {
-			const itemEl = listEl.createEl('li', { cls: 'fast-templater-template-item' });
+			const itemEl = listEl.createEl('li', { cls: 'note-architect-template-item' });
 			if (isAllSection && this.highlightActive && index === this.activeIndex) {
-				itemEl.addClass('fast-templater-template-item-active');
+				itemEl.addClass('note-architect-template-item-active');
 			}
 			if (this.selectedTemplateId && template.id === this.selectedTemplateId) {
-				itemEl.addClass('fast-templater-template-item-selected');
+				itemEl.addClass('note-architect-template-item-selected');
 			}
 
 			itemEl.createEl('span', {
 				text: template.name,
-				cls: 'fast-templater-template-name'
+				cls: 'note-architect-template-name'
 			});
 
 			itemEl.addEventListener('mouseenter', () => {
@@ -165,8 +165,8 @@ export class TemplateListView {
 	private applyActiveState() {
 		if (!this.allListEl) return;
 
-		const prevActive = this.allListEl.querySelector('.fast-templater-template-item-active');
-		prevActive?.classList.remove('fast-templater-template-item-active');
+		const prevActive = this.allListEl.querySelector('.note-architect-template-item-active');
+		prevActive?.classList.remove('note-architect-template-item-active');
 
 		if (!this.highlightActive || this.activeIndex < 0) {
 			return;
@@ -177,7 +177,7 @@ export class TemplateListView {
 
 		const newActive = child as HTMLElement;
 		if (newActive) {
-			newActive.classList.add('fast-templater-template-item-active');
+			newActive.classList.add('note-architect-template-item-active');
 			newActive.scrollIntoView({ block: 'nearest' });
 		}
 	}

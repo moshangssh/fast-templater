@@ -22,11 +22,11 @@ export class TemplateSearchView {
 	}
 
 	mount() {
-		this.containerEl = this.parentEl.createDiv('fast-templater-search-container');
+		this.containerEl = this.parentEl.createDiv('note-architect-search-container');
 		this.inputEl = this.containerEl.createEl('input', {
 			type: 'text',
 			placeholder: this.options.placeholder ?? '搜索模板...',
-			cls: 'fast-templater-search-input'
+			cls: 'note-architect-search-input'
 		});
 
 		this.inputEl.addEventListener('input', this.handleInput);
@@ -35,7 +35,7 @@ export class TemplateSearchView {
 		this.clearButtonEl = this.containerEl.createEl('button', {
 			type: 'button',
 			text: '×',
-			cls: 'fast-templater-search-clear'
+			cls: 'note-architect-search-clear'
 		});
 		this.clearButtonEl.title = '清空搜索';
 		this.clearButtonEl.setAttribute('aria-label', '清空搜索');

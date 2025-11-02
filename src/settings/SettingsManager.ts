@@ -1,8 +1,8 @@
-import type FastTemplater from "@core/plugin";
+import type NoteArchitect from "@core/plugin";
 import { handleError } from "@core/error";
 import { DEFAULT_SETTINGS } from "@types";
 import type {
-	FastTemplaterSettings,
+	NoteArchitectSettings,
 	FrontmatterField,
 	FrontmatterPreset,
 } from "@types";
@@ -12,31 +12,31 @@ export interface SaveSettingsOptions {
 	reloadTemplates?: () => Promise<unknown>;
 }
 
-type PartialSettings = Partial<FastTemplaterSettings>;
+type PartialSettings = Partial<NoteArchitectSettings>;
 
 const VALID_FIELD_TYPES: FrontmatterField["type"][] = ["text", "select", "date", "multi-select"];
 
 export class SettingsManager {
-	private readonly plugin: FastTemplater;
-	private settings: FastTemplaterSettings;
+	private readonly plugin: NoteArchitect;
+	private settings: NoteArchitectSettings;
 
-	constructor(plugin: FastTemplater) {
+	constructor(plugin: NoteArchitect) {
 		this.plugin = plugin;
 		this.settings = { ...DEFAULT_SETTINGS };
 	}
 
-	getSettings(): FastTemplaterSettings {
+	getSettings(): NoteArchitectSettings {
 		return this.settings;
 	}
 
-	async load(): Promise<FastTemplaterSettings> {
+	async load(): Promise<NoteArchitectSettings> {
 		try {
 			const rawData = await this.plugin.loadData();
 			this.settings = this.normalizeSettings(rawData as PartialSettings);
 		} catch (error) {
 			handleError(error, {
 				context: "SettingsManager.load",
-				userMessage: "Fast Templater: 加载设置失败，使用默认设置",
+				userMessage: "Note Architect: 加载设置失败，使用默认设置",
 			});
 			this.settings = { ...DEFAULT_SETTINGS };
 		}
@@ -44,7 +44,7 @@ export class SettingsManager {
 		return this.settings;
 	}
 
-	async save(settings: FastTemplaterSettings = this.settings, options: SaveSettingsOptions = {}): Promise<FastTemplaterSettings> {
+	async save(settings: NoteArchitectSettings = this.settings, options: SaveSettingsOptions = {}): Promise<NoteArchitectSettings> {
 		this.settings = this.normalizeSettings(settings);
 
 		try {
@@ -57,7 +57,7 @@ export class SettingsManager {
 		} catch (error) {
 			handleError(error, {
 				context: "SettingsManager.save",
-				userMessage: "Fast Templater: 保存设置失败",
+				userMessage: "Note Architect: 保存设置失败",
 			});
 		}
 
@@ -86,7 +86,7 @@ export class SettingsManager {
 		return sanitizedData;
 	}
 
-	private normalizeSettings(data: PartialSettings): FastTemplaterSettings {
+	private normalizeSettings(data: PartialSettings): NoteArchitectSettings {
 		const migrated = this.migrateSettingsData(data);
 
 		return {
@@ -153,7 +153,7 @@ export class SettingsManager {
 			});
 	}
 
-	private serializeSettings(settings: FastTemplaterSettings): FastTemplaterSettings {
+	private serializeSettings(settings: NoteArchitectSettings): NoteArchitectSettings {
 		return {
 			templateFolderPath: settings.templateFolderPath,
 			enableTemplaterIntegration: settings.enableTemplaterIntegration,

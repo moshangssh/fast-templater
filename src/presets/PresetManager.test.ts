@@ -2,12 +2,12 @@ import type { SettingsManager } from '@settings';
 import { PresetImportError, PresetManager } from '@presets';
 import {
 	DEFAULT_SETTINGS,
-	type FastTemplaterSettings,
+	type NoteArchitectSettings,
 	type FrontmatterPreset,
 } from '@types';
 
 const createManager = (presets: FrontmatterPreset[] = []) => {
-	const settings: FastTemplaterSettings = {
+	const settings: NoteArchitectSettings = {
 		...DEFAULT_SETTINGS,
 		frontmatterPresets: presets.map((preset) => ({
 			...preset,
@@ -80,7 +80,7 @@ describe('PresetManager 导入导出', () => {
 
 	const buildExportJson = (presets: FrontmatterPreset[]) =>
 		JSON.stringify({
-			type: 'fast-templater-presets' as const,
+			type: 'note-architect-presets' as const,
 			version: 1 as const,
 			exportedAt: '2024-01-01T00:00:00.000Z',
 			presets,
@@ -97,7 +97,7 @@ describe('PresetManager 导入导出', () => {
 		const json = manager.exportAllPresets();
 		const parsed = JSON.parse(json);
 
-		expect(parsed.type).toBe('fast-templater-presets');
+		expect(parsed.type).toBe('note-architect-presets');
 		expect(parsed.presets).toHaveLength(2);
 		expect(parsed.presets[0].id).toBe('sample');
 		expect(parsed.presets[1].id).toBe('another');
@@ -181,5 +181,72 @@ describe('PresetManager 导入导出', () => {
 		]);
 
 		await expect(manager.importPresets(json)).rejects.toBeInstanceOf(PresetImportError);
+	});
+});
+
+describe('PresetManager 重命名', () => {
+	const buildPreset = (id: string, name: string = '预设'): FrontmatterPreset => ({
+		id,
+		name,
+		fields: [],
+	});
+
+	it('仅更新名称时应保持ID不变', async () => {
+		const existing = buildPreset('sample', '旧名称');
+		const { manager, settings, save } = createManager([existing]);
+
+		const outcome = await manager.renamePresetWithIdChange('sample', '新名称');
+
+		expect(outcome.idChanged).toBe(false);
+		expect(outcome.previousId).toBe('sample');
+		expect(outcome.preset.name).toBe('新名称');
+		expect(outcome.preset.id).toBe('sample');
+		expect(settings.frontmatterPresets[0].name).toBe('新名称');
+		expect(save).toHaveBeenCalled();
+	});
+
+	it('更新ID时应返回 idChanged 并更新存储', async () => {
+		const existing = buildPreset('sample', '旧名称');
+		const { manager, settings, save } = createManager([existing]);
+
+		const outcome = await manager.renamePresetWithIdChange('sample', '新名称', {
+			newId: 'renamed-sample',
+		});
+
+		expect(outcome.idChanged).toBe(true);
+		expect(outcome.previousId).toBe('sample');
+		expect(outcome.preset.id).toBe('renamed-sample');
+		expect(settings.frontmatterPresets[0].id).toBe('renamed-sample');
+		expect(save).toHaveBeenCalled();
+	});
+
+	it('尝试使用已存在的ID应抛出错误', async () => {
+		const { manager } = createManager([
+			buildPreset('sample-a', 'A'),
+			buildPreset('sample-b', 'B'),
+		]);
+
+		await expect(
+			manager.renamePresetWithIdChange('sample-a', '保持名称', {
+				newId: 'sample-b',
+			}),
+		).rejects.toThrow('预设ID "sample-b" 已存在');
+	});
+
+	it('validatePresetIdForUpdate 可忽略当前预设自身的ID', () => {
+		const { manager } = createManager([
+			buildPreset('sample-a', 'A'),
+			buildPreset('sample-b', 'B'),
+		]);
+
+		const sameIdResult = manager.validatePresetIdForUpdate('sample-a', {
+			ignorePresetId: 'sample-a',
+		});
+		const conflictResult = manager.validatePresetIdForUpdate('sample-b', {
+			ignorePresetId: 'sample-a',
+		});
+
+		expect(sameIdResult.isValid).toBe(true);
+		expect(conflictResult.isValid).toBe(false);
 	});
 });

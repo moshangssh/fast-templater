@@ -1,6 +1,7 @@
 import { App, Editor } from 'obsidian';
-import * as yaml from 'js-yaml';
-import type FastTemplater from '@core/plugin';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { PRESET_CONFIG_KEY } from '@core/constants';
+import type NoteArchitect from '@core/plugin';
 import type {
 	FrontmatterPreset,
 	NoteMetadata,
@@ -13,7 +14,7 @@ import type {
 import type { TemplaterPort } from './TemplaterPort';
 import { ObsidianTemplaterAdapter } from './ObsidianTemplaterAdapter';
 
-export async function processTemplateContent(app: App, plugin: FastTemplater, template: Template): Promise<TemplateProcessingResult> {
+export async function processTemplateContent(app: App, plugin: NoteArchitect, template: Template): Promise<TemplateProcessingResult> {
 	let processedContent = template.content;
 	let usedTemplater = false;
 	let error: string | undefined;
@@ -25,7 +26,7 @@ export async function processTemplateContent(app: App, plugin: FastTemplater, te
 				processedContent = await templater.processTemplate(template);
 				usedTemplater = true;
 			} catch (templaterError) {
-				console.warn('Fast Templater: Templater 处理失败，使用原始模板内容', templaterError);
+				console.warn('Note Architect: Templater 处理失败，使用原始模板内容', templaterError);
 				error = 'Templater 处理失败，使用原始模板内容';
 			}
 		}
@@ -41,12 +42,12 @@ export function parseTemplateContent(content: string): ParsedTemplateContent {
 	if (match) {
 		try {
 			const frontmatterText = match[1];
-			const frontmatter = (yaml.load(frontmatterText) || {}) as Record<string, unknown>;
+			const frontmatter = (parseYaml(frontmatterText) ?? {}) as Record<string, unknown>;
 			const body = content.replace(frontmatterRegex, '').trim();
 
 			return { frontmatter, body };
 		} catch (error) {
-			console.warn('Fast Templater: Frontmatter 解析失败', error);
+			console.warn('Note Architect: Frontmatter 解析失败', error);
 			return { frontmatter: {}, body: content };
 		}
 	}
@@ -66,7 +67,7 @@ export function mergeFrontmatterWithUserInput(
 	const templateOverridesNote = mergeFrontmatters(noteOverridesPreset, templateFrontmatter);
 	const finalResult = mergeFrontmatters(templateOverridesNote, userFrontmatter);
 
-	delete finalResult['fast-templater-config'];
+	delete finalResult[PRESET_CONFIG_KEY];
 
 	const orderedFrontmatter: Record<string, unknown> = {};
 	const presetKeys = preset.fields.map(field => field.key);
@@ -151,7 +152,7 @@ export function convertFormDataToFrontmatter(
 
 export async function prepareTemplateWithUserInput(
 	app: App,
-	plugin: FastTemplater,
+	plugin: NoteArchitect,
 	template: Template,
 	preset: FrontmatterPreset,
 	userFrontmatter: Record<string, unknown>,
@@ -221,11 +222,10 @@ export function getNoteMetadata(app: App): NoteMetadata {
 
 export function updateNoteFrontmatter(editor: Editor, newFrontmatter: Record<string, unknown>, position: Pos | null): void {
 	try {
-		const newYamlString = yaml.dump(newFrontmatter, {
+		const newYamlString = stringifyYaml(newFrontmatter, {
 			indent: 2,
-			lineWidth: -1,
-			noRefs: true,
-			sortKeys: false
+			lineWidth: 0,
+			aliasDuplicateObjects: false
 		});
 
 		if (position && position.start && position.end) {
@@ -237,7 +237,7 @@ export function updateNoteFrontmatter(editor: Editor, newFrontmatter: Record<str
 			editor.replaceRange(`---\n${newYamlString}---\n\n`, startPos);
 		}
 	} catch (error) {
-		console.error('Fast Templater: 更新 frontmatter 失败', error);
+		console.error('Note Architect: 更新 frontmatter 失败', error);
 		throw error;
 	}
 }

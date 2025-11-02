@@ -1,6 +1,6 @@
-# Obsidian Sample Plugin
+# Note Architect
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+Note Architect 是一款面向 Obsidian (https://obsidian.md) 的可视化模板插件。
 
 This project uses TypeScript to provide type checking and documentation.
 The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.

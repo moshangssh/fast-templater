@@ -5,15 +5,15 @@ describe('frontmatter-editor', () => {
         const content = '# Title\nBody section';
         const result = updateFrontmatter(content, (fm) => ({
             ...fm,
-            'fast-templater-config': 'preset-id',
+            'note-architect-config': 'preset-id',
         }));
 
         expect(result.changed).toBe(true);
-        expect(result.frontmatter['fast-templater-config']).toBe('preset-id');
+        expect(result.frontmatter['note-architect-config']).toBe('preset-id');
         expect(result.previousFrontmatter).toEqual({});
         expect(result.content).toBe([
             '---',
-            'fast-templater-config: preset-id',
+            'note-architect-config: preset-id',
             '---',
             '',
             '# Title',
@@ -24,7 +24,7 @@ describe('frontmatter-editor', () => {
     it('updateFrontmatter overwrites existing binding and keeps extra fields', () => {
         const content = [
             '---',
-            'fast-templater-config: old-id',
+            'note-architect-config: old-id',
             'another: value',
             '---',
             '',
@@ -34,17 +34,17 @@ describe('frontmatter-editor', () => {
         const parsed = parseFrontmatter(content);
         const result = updateFrontmatter(content, (fm) => ({
             ...fm,
-            'fast-templater-config': 'new-id',
+            'note-architect-config': 'new-id',
         }), parsed);
 
         expect(result.changed).toBe(true);
         expect(result.frontmatter).toEqual({
-            'fast-templater-config': 'new-id',
+            'note-architect-config': 'new-id',
             another: 'value',
         });
         expect(result.content).toBe([
             '---',
-            'fast-templater-config: new-id',
+            'note-architect-config: new-id',
             'another: value',
             '---',
             '',
@@ -55,7 +55,7 @@ describe('frontmatter-editor', () => {
     it('updateFrontmatter skips rewrite when value is unchanged', () => {
         const content = [
             '---',
-            'fast-templater-config: same-id',
+            'note-architect-config: same-id',
             '---',
             '',
             'Content',
@@ -64,7 +64,7 @@ describe('frontmatter-editor', () => {
         const parsed = parseFrontmatter(content);
         const result = updateFrontmatter(content, (fm) => ({
             ...fm,
-            'fast-templater-config': 'same-id',
+            'note-architect-config': 'same-id',
         }), parsed);
 
         expect(result.changed).toBe(false);
@@ -74,14 +74,14 @@ describe('frontmatter-editor', () => {
     it('removeFrontmatterField clears binding and drops empty header', () => {
         const content = [
             '---',
-            'fast-templater-config: preset-id',
+            'note-architect-config: preset-id',
             '---',
             '',
             'Content',
         ].join('\n');
 
         const parsed = parseFrontmatter(content);
-        const result = removeFrontmatterField(content, 'fast-templater-config', parsed);
+        const result = removeFrontmatterField(content, 'note-architect-config', parsed);
 
         expect(result.changed).toBe(true);
         expect(result.frontmatter).toEqual({});
@@ -91,7 +91,7 @@ describe('frontmatter-editor', () => {
     it('removeFrontmatterField keeps remaining frontmatter entries', () => {
         const content = [
             '---',
-            'fast-templater-config: preset-id',
+            'note-architect-config: preset-id',
             'another: value',
             '---',
             '',
@@ -99,7 +99,7 @@ describe('frontmatter-editor', () => {
         ].join('\n');
 
         const parsed = parseFrontmatter(content);
-        const result = removeFrontmatterField(content, 'fast-templater-config', parsed);
+        const result = removeFrontmatterField(content, 'note-architect-config', parsed);
 
         expect(result.changed).toBe(true);
         expect(result.frontmatter).toEqual({ another: 'value' });

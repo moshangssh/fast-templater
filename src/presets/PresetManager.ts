@@ -1,6 +1,6 @@
 import type { SaveSettingsOptions, SettingsManager } from '@settings';
 import type {
-	FastTemplaterSettings,
+	NoteArchitectSettings,
 	FrontmatterField,
 	FrontmatterPreset,
 } from '@types';
@@ -19,7 +19,7 @@ export interface ImportPresetsResult {
 }
 
 export interface PresetCollectionExportPayload {
-	type: 'fast-templater-presets';
+	type: 'note-architect-presets';
 	version: 1;
 	exportedAt: string;
 	presets: FrontmatterPreset[];
@@ -43,6 +43,17 @@ export interface CreatePresetPayload {
 	fields?: FrontmatterField[];
 }
 
+export interface RenamePresetOptions {
+	newId?: string;
+	saveOptions?: SaveSettingsOptions;
+}
+
+export interface RenamePresetResult {
+	preset: FrontmatterPreset;
+	previousId: string;
+	idChanged: boolean;
+}
+
 export class PresetManager {
 	private saveOptionsFactory?: () => SaveSettingsOptions | undefined;
 
@@ -53,7 +64,7 @@ export class PresetManager {
 		this.saveOptionsFactory = saveOptionsFactory;
 	}
 
-	private get settings(): FastTemplaterSettings {
+	private get settings(): NoteArchitectSettings {
 		return this.settingsManager.getSettings();
 	}
 
@@ -199,7 +210,7 @@ export class PresetManager {
 
 	exportAllPresets(): string {
 		const payload: PresetCollectionExportPayload = {
-			type: 'fast-templater-presets',
+			type: 'note-architect-presets',
 			version: 1,
 			exportedAt: new Date().toISOString(),
 			presets: this.presets.map((preset) => ({
@@ -339,6 +350,31 @@ export class PresetManager {
 		return { isValid: true };
 	}
 
+	validatePresetIdForUpdate(
+		id: string,
+		options: { ignorePresetId?: string } = {},
+	): PresetIdValidationResult {
+		const trimmedId = id.trim();
+
+		const formatError = this.getPresetIdFormatError(trimmedId);
+		if (formatError) {
+			return { isValid: false, error: formatError };
+		}
+
+		const conflict = this.presets.find(
+			(preset) => preset.id === trimmedId && preset.id !== options.ignorePresetId,
+		);
+
+		if (conflict) {
+			return {
+				isValid: false,
+				error: `预设ID "${trimmedId}" 已存在，请使用其他ID`,
+			};
+		}
+
+		return { isValid: true };
+	}
+
 	async createPreset(
 		payload: CreatePresetPayload,
 		options?: SaveSettingsOptions,
@@ -375,11 +411,11 @@ export class PresetManager {
 		return newPreset;
 	}
 
-	async renamePreset(
+	async renamePresetWithIdChange(
 		presetId: string,
 		newName: string,
-		options?: SaveSettingsOptions,
-	): Promise<FrontmatterPreset> {
+		options?: RenamePresetOptions,
+	): Promise<RenamePresetResult> {
 		const trimmedName = newName.trim();
 		if (!trimmedName) {
 			throw new Error('预设名称不能为空');
@@ -390,14 +426,54 @@ export class PresetManager {
 			throw new Error(`未找到 ID 为 "${presetId}" 的预设`);
 		}
 
-		if (preset.name === trimmedName) {
-			return preset;
+		const previousId = preset.id;
+		let targetId = previousId;
+		let idChanged = false;
+
+		if (options?.newId !== undefined) {
+			const candidateId = options.newId.trim();
+			if (!candidateId) {
+				throw new Error('预设ID不能为空');
+			}
+			if (candidateId !== previousId) {
+				const validation = this.validatePresetIdForUpdate(candidateId, {
+					ignorePresetId: previousId,
+				});
+				if (!validation.isValid) {
+					throw new Error(validation.error ?? '预设ID无效');
+				}
+				targetId = candidateId;
+				idChanged = true;
+			}
 		}
 
-		preset.name = trimmedName;
-		await this.persist(options);
+		const nameChanged = preset.name !== trimmedName;
+		if (!nameChanged && !idChanged) {
+			return { preset, previousId, idChanged: false };
+		}
 
-		return preset;
+		if (nameChanged) {
+			preset.name = trimmedName;
+		}
+
+		if (idChanged) {
+			preset.id = targetId;
+		}
+
+		await this.persist(options?.saveOptions);
+
+		return { preset, previousId, idChanged };
+	}
+
+	async renamePreset(
+		presetId: string,
+		newName: string,
+		options?: SaveSettingsOptions,
+	): Promise<FrontmatterPreset> {
+		const result = await this.renamePresetWithIdChange(presetId, newName, {
+			saveOptions: options,
+		});
+		return result.preset;
 	}
 
 	async deletePreset(
@@ -431,7 +507,7 @@ export class PresetManager {
 
 	private async persist(
 		options?: SaveSettingsOptions,
-	): Promise<FastTemplaterSettings> {
+	): Promise<NoteArchitectSettings> {
 		const defaultOptions = this.saveOptionsFactory?.() ?? {};
 		const mergedOptions: SaveSettingsOptions = {
 			...defaultOptions,
@@ -479,7 +555,7 @@ export class PresetManager {
 
 		if ('presets' in rawData) {
 			const structured = rawData as Partial<PresetCollectionExportPayload> & { presets?: unknown };
-			if (structured.type && structured.type !== 'fast-templater-presets') {
+			if (structured.type && structured.type !== 'note-architect-presets') {
 				throw new PresetImportError('导入失败：JSON 类型标识不匹配');
 			}
 			if (!Array.isArray(structured.presets)) {

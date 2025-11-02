@@ -245,38 +245,38 @@ export function renderStatusBlock(containerEl: HTMLElement, config: {
 	containerClass?: string;
 }): HTMLElement {
 	const statusEl = containerEl.createDiv({
-		cls: config.containerClass || 'fast-templater-status-block setting-item-description'
+		cls: config.containerClass || 'note-architect-status-block setting-item-description'
 	});
 
 	// 标题区域
-	const headerEl = statusEl.createDiv('fast-templater-status-block__header');
+	const headerEl = statusEl.createDiv('note-architect-status-block__header');
 	headerEl.createSpan({
-		cls: 'fast-templater-status-block__icon',
+		cls: 'note-architect-status-block__icon',
 		text: config.icon
 	});
 	headerEl.createSpan({
-		cls: 'fast-templater-status-block__title',
+		cls: 'note-architect-status-block__title',
 		text: config.title
 	});
 
 	// 状态内容区域
-	const itemsEl = statusEl.createDiv('fast-templater-status-block__items');
+	const itemsEl = statusEl.createDiv('note-architect-status-block__items');
 	config.items.forEach(item => {
 		const itemEl = itemsEl.createDiv({
 			cls: [
-				'fast-templater-status-block__item',
-				item.label ? '' : 'fast-templater-status-block__item--note'
+				'note-architect-status-block__item',
+				item.label ? '' : 'note-architect-status-block__item--note'
 			].join(' ').trim()
 		});
 
 		if (item.label) {
 			itemEl.createSpan({
-				cls: 'fast-templater-status-block__item-label',
+				cls: 'note-architect-status-block__item-label',
 				text: item.label
 			});
 		}
 
-		const contentWrapper = itemEl.createDiv('fast-templater-status-block__item-content');
+		const contentWrapper = itemEl.createDiv('note-architect-status-block__item-content');
 		let contentElement: HTMLElement;
 		switch (item.type) {
 			case 'code':
@@ -285,7 +285,7 @@ export function renderStatusBlock(containerEl: HTMLElement, config: {
 			case 'status':
 				contentElement = contentWrapper.createSpan({
 					text: item.content,
-					cls: 'fast-templater-status-block__status'
+					cls: 'note-architect-status-block__status'
 				});
 				if (item.color) {
 					contentElement.style.color = item.color;
@@ -294,12 +294,12 @@ export function renderStatusBlock(containerEl: HTMLElement, config: {
 			default:
 				contentElement = contentWrapper.createSpan({ text: item.content });
 		}
-		contentElement.classList.add('fast-templater-status-block__value');
+		contentElement.classList.add('note-architect-status-block__value');
 	});
 
 	// 操作按钮区域
 	if (config.actions && config.actions.length > 0) {
-		const actionsEl = statusEl.createDiv('fast-templater-actions');
+		const actionsEl = statusEl.createDiv('note-architect-actions');
 		config.actions.forEach(action => {
 			const button = actionsEl.createEl('button', {
 				text: action.text,

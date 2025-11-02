@@ -2,15 +2,15 @@ import { Plugin } from 'obsidian';
 import { PresetManager } from '@presets';
 import { SettingsManager } from '@settings';
 import { TemplateManager } from '@templates';
-import type { AppWithSettings, FastTemplaterSettings } from '@types';
+import type { AppWithSettings, NoteArchitectSettings } from '@types';
 import { SettingsFacade } from './SettingsFacade';
 import { UiRegistrar } from './UiRegistrar';
 
 const MAX_RECENT_TEMPLATES = 5;
 
-export default class FastTemplater extends Plugin {
+export default class NoteArchitect extends Plugin {
 	settingsManager: SettingsManager;
-	settings: FastTemplaterSettings;
+	settings: NoteArchitectSettings;
 	templateManager: TemplateManager;
 	presetManager: PresetManager;
 	updateStatusBar?: () => void;

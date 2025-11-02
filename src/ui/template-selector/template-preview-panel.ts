@@ -21,13 +21,13 @@ export class TemplatePreviewPanel {
 		if (!template) {
 			this.contentEl.createEl('p', {
 				text: '悬停或点击模板名称以预览内容',
-				cls: 'fast-templater-preview-placeholder'
+				cls: 'note-architect-preview-placeholder'
 			});
 			return;
 		}
 
 		try {
-			const renderedEl = this.contentEl.createDiv('fast-templater-preview-markdown');
+			const renderedEl = this.contentEl.createDiv('note-architect-preview-markdown');
 			MarkdownRenderer.renderMarkdown(template.content, renderedEl, template.path, this.markdownComponent);
 		} catch (error) {
 			handleError(error, {
@@ -36,11 +36,11 @@ export class TemplatePreviewPanel {
 
 			this.contentEl.createEl('p', {
 				text: '预览渲染失败，显示原始内容：',
-				cls: 'fast-templater-preview-error'
+				cls: 'note-architect-preview-error'
 			});
 			this.contentEl.createEl('pre', {
 				text: template.content,
-				cls: 'fast-templater-preview-raw'
+				cls: 'note-architect-preview-raw'
 			});
 		}
 	}

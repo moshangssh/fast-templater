@@ -1,0 +1,1 @@
+2025-02-20 检查：源码中已无 js-yaml 调用，依赖已改用 yaml 替代；package.json 仅声明 yaml 依赖。

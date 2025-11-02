@@ -43,41 +43,41 @@ export class FieldConfigModal extends Modal {
 		contentEl.createEl('h2', { text: `配置预设字段: ${this.preset.name}` });
 
 		// 创建主容器
-		const mainContainer = contentEl.createDiv('fast-templater-field-config-container');
+		const mainContainer = contentEl.createDiv('note-architect-field-config-container');
 
 		// 创建字段列表容器
-		const fieldsContainer = mainContainer.createDiv('fast-templater-fields-list');
+		const fieldsContainer = mainContainer.createDiv('note-architect-fields-list');
 
 		// 渲染字段列表
 		this.renderFieldsList(fieldsContainer);
 
 		// 创建操作按钮容器
-		const actionsContainer = mainContainer.createDiv('fast-templater-field-config-actions');
+		const actionsContainer = mainContainer.createDiv('note-architect-field-config-actions');
 
 		// 添加字段按钮
 		const addFieldBtn = actionsContainer.createEl('button', {
 			text: '添加字段',
-			cls: 'mod-cta fast-templater-field-config-actions__btn'
+			cls: 'mod-cta note-architect-field-config-actions__btn'
 		});
 		addFieldBtn.onclick = () => this.addNewField(fieldsContainer);
 
 		// 按钮分隔
 		actionsContainer.createEl('span', {
 			text: ' | ',
-			cls: 'fast-templater-field-config-actions__divider'
+			cls: 'note-architect-field-config-actions__divider'
 		});
 
 		// 保存按钮
 		const saveBtn = actionsContainer.createEl('button', {
 			text: '保存',
-			cls: 'mod-cta fast-templater-field-config-actions__btn'
+			cls: 'mod-cta note-architect-field-config-actions__btn'
 		});
 		saveBtn.onclick = () => this.saveAndClose();
 
 		// 取消按钮
 		const cancelBtn = actionsContainer.createEl('button', {
 			text: '取消',
-			cls: 'fast-templater-field-config-actions__btn'
+			cls: 'note-architect-field-config-actions__btn'
 		});
 		cancelBtn.onclick = () => this.close();
 	}
@@ -90,7 +90,7 @@ export class FieldConfigModal extends Modal {
 
 		if (this.fields.length === 0) {
 			// 显示空状态
-			const emptyEl = containerEl.createDiv('fast-templater-empty-fields');
+			const emptyEl = containerEl.createDiv('note-architect-empty-fields');
 			emptyEl.createEl('p', {
 				text: '暂无字段，点击"添加字段"开始创建。',
 				cls: 'setting-item-description'
@@ -117,7 +117,7 @@ export class FieldConfigModal extends Modal {
 	 * 创建字段项容器
 	 */
 	private createFieldItem(containerEl: HTMLElement, index: number): HTMLDivElement {
-		const fieldItem = containerEl.createDiv('fast-templater-field-item');
+		const fieldItem = containerEl.createDiv('note-architect-field-item');
 		fieldItem.dataset.index = index.toString();
 		return fieldItem;
 	}
@@ -131,14 +131,14 @@ export class FieldConfigModal extends Modal {
 		index: number,
 		containerEl: HTMLElement
 	): { configContainer: HTMLDivElement; updateSummary: () => void } {
-		const headerEl = fieldItem.createDiv('fast-templater-field-header');
-		headerEl.addClass('fast-templater-field-header--collapsible');
+		const headerEl = fieldItem.createDiv('note-architect-field-header');
+		headerEl.addClass('note-architect-field-header--collapsible');
 		headerEl.setAttr('tabindex', '0');
 		headerEl.setAttr('role', 'button');
 
-		const headerLeft = headerEl.createDiv('fast-templater-field-header__left');
+		const headerLeft = headerEl.createDiv('note-architect-field-header__left');
 		const dragHandle = headerLeft.createSpan({
-			cls: 'fast-templater-field-drag-handle',
+			cls: 'note-architect-field-drag-handle',
 			text: '⠿'
 		});
 		this.setupDragHandle(dragHandle, fieldItem, index, containerEl);
@@ -146,12 +146,12 @@ export class FieldConfigModal extends Modal {
 
 		const titleEl = headerLeft.createEl('h4', { text: `字段 ${index + 1}` });
 		const summaryEl = headerLeft.createSpan({
-			cls: 'fast-templater-field-header__summary'
+			cls: 'note-architect-field-header__summary'
 		});
 		const updateSummary = () => this.updateFieldSummary(titleEl, summaryEl, field, index);
 		updateSummary();
 
-		const headerActions = headerEl.createDiv('fast-templater-field-header__actions');
+		const headerActions = headerEl.createDiv('note-architect-field-header__actions');
 		const deleteBtn = headerActions.createEl('button', {
 			text: '删除',
 			cls: 'mod-warning'
@@ -161,7 +161,7 @@ export class FieldConfigModal extends Modal {
 			this.removeField(index, containerEl);
 		};
 
-		const configContainer = fieldItem.createDiv('fast-templater-field-config');
+		const configContainer = fieldItem.createDiv('note-architect-field-config');
 		this.setupCollapseBehaviour({
 			fieldItem,
 			field,
@@ -184,14 +184,14 @@ export class FieldConfigModal extends Modal {
 		dragHandle.setAttr('draggable', 'true');
 		dragHandle.addEventListener('dragstart', event => {
 			this.draggedIndex = index;
-			fieldItem.classList.add('fast-templater-field-item--dragging');
+			fieldItem.classList.add('note-architect-field-item--dragging');
 			event.dataTransfer?.setData('text/plain', String(index));
 			event.dataTransfer && (event.dataTransfer.effectAllowed = 'move');
 		});
 
 		dragHandle.addEventListener('dragend', () => {
 			this.draggedIndex = null;
-			fieldItem.classList.remove('fast-templater-field-item--dragging');
+			fieldItem.classList.remove('note-architect-field-item--dragging');
 			this.clearDragStyles(containerEl);
 		});
 	}
@@ -208,12 +208,12 @@ export class FieldConfigModal extends Modal {
 			event.dataTransfer && (event.dataTransfer.dropEffect = 'move');
 
 			const isAfter = this.isDropAfter(event, fieldItem);
-			fieldItem.classList.toggle('fast-templater-field-item--drag-over-before', !isAfter);
-			fieldItem.classList.toggle('fast-templater-field-item--drag-over-after', isAfter);
+			fieldItem.classList.toggle('note-architect-field-item--drag-over-before', !isAfter);
+			fieldItem.classList.toggle('note-architect-field-item--drag-over-after', isAfter);
 		});
 
 		fieldItem.addEventListener('dragleave', () => {
-			fieldItem.classList.remove('fast-templater-field-item--drag-over-before', 'fast-templater-field-item--drag-over-after');
+			fieldItem.classList.remove('note-architect-field-item--drag-over-before', 'note-architect-field-item--drag-over-after');
 		});
 
 		fieldItem.addEventListener('drop', event => {
@@ -247,10 +247,10 @@ export class FieldConfigModal extends Modal {
 	}): void {
 		const applyCollapseState = (collapsed: boolean) => {
 			this.fieldCollapseStates.set(field, collapsed);
-			fieldItem.classList.toggle('fast-templater-field-item--collapsed', collapsed);
-			configContainer.classList.toggle('fast-templater-field-config--collapsed', collapsed);
+			fieldItem.classList.toggle('note-architect-field-item--collapsed', collapsed);
+			configContainer.classList.toggle('note-architect-field-config--collapsed', collapsed);
 			headerEl.setAttr('aria-expanded', (!collapsed).toString());
-			headerEl.classList.toggle('fast-templater-field-header--collapsed', collapsed);
+			headerEl.classList.toggle('note-architect-field-header--collapsed', collapsed);
 		};
 		applyCollapseState(this.isFieldCollapsed(field));
 
@@ -259,8 +259,8 @@ export class FieldConfigModal extends Modal {
 				return false;
 			}
 			return Boolean(
-				target.closest('.fast-templater-field-header__actions') ||
-				target.closest('.fast-templater-field-drag-handle')
+				target.closest('.note-architect-field-header__actions') ||
+				target.closest('.note-architect-field-drag-handle')
 			);
 		};
 
@@ -337,13 +337,13 @@ export class FieldConfigModal extends Modal {
 		const row = this.createFieldRow(container);
 		row.createEl('label', {
 			text: 'Frontmatter 键名: *',
-			cls: 'fast-templater-field-label'
+			cls: 'note-architect-field-label'
 		});
 		const input = row.createEl('input', {
 			type: 'text',
 			value: field.key,
 			placeholder: '例如: status, category, priority',
-			cls: 'fast-templater-field-input'
+			cls: 'note-architect-field-input'
 		});
 		input.addEventListener('input', () => {
 			field.key = input.value.trim();
@@ -362,13 +362,13 @@ export class FieldConfigModal extends Modal {
 		const row = this.createFieldRow(container);
 		row.createEl('label', {
 			text: '显示名称: *',
-			cls: 'fast-templater-field-label'
+			cls: 'note-architect-field-label'
 		});
 		const input = row.createEl('input', {
 			type: 'text',
 			value: field.label,
 			placeholder: '例如: 状态, 分类, 优先级',
-			cls: 'fast-templater-field-input'
+			cls: 'note-architect-field-input'
 		});
 		input.addEventListener('input', () => {
 			field.label = input.value.trim();
@@ -387,10 +387,10 @@ export class FieldConfigModal extends Modal {
 		const row = this.createFieldRow(container);
 		row.createEl('label', {
 			text: '字段类型: *',
-			cls: 'fast-templater-field-label'
+			cls: 'note-architect-field-label'
 		});
 		const select = row.createEl('select', {
-			cls: 'fast-templater-field-input fast-templater-field-select'
+			cls: 'note-architect-field-input note-architect-field-select'
 		});
 
 		const types = ['text', 'select', 'date', 'multi-select'] as const;
@@ -427,13 +427,13 @@ export class FieldConfigModal extends Modal {
 		const row = this.createFieldRow(container);
 		row.createEl('label', {
 			text: '默认值:',
-			cls: 'fast-templater-field-label'
+			cls: 'note-architect-field-label'
 		});
 		const input = row.createEl('input', {
 			type: 'text',
 			value: field.default,
 			placeholder: '默认值或 Templater 宏（可选）',
-			cls: 'fast-templater-field-input'
+			cls: 'note-architect-field-input'
 		});
 
 		if (!field.useTemplaterTimestamp) {
@@ -459,24 +459,24 @@ export class FieldConfigModal extends Modal {
 		inputEl: HTMLInputElement
 	): void {
 		const row = this.createFieldRow(container, { stacked: true });
-		row.addClass('fast-templater-date-autofill-row');
+		row.addClass('note-architect-date-autofill-row');
 
-		const controls = row.createDiv('fast-templater-date-autofill__controls');
-		const checkboxId = `fast-templater-date-autofill-${Math.random().toString(36).slice(2)}`;
+		const controls = row.createDiv('note-architect-date-autofill__controls');
+		const checkboxId = `note-architect-date-autofill-${Math.random().toString(36).slice(2)}`;
 		const checkbox = controls.createEl('input', {
 			type: 'checkbox',
-			cls: 'fast-templater-date-autofill__checkbox',
+			cls: 'note-architect-date-autofill__checkbox',
 		});
 		checkbox.id = checkboxId;
 		checkbox.checked = field.useTemplaterTimestamp === true;
 
 		const labelEl = controls.createEl('label', {
-			cls: 'fast-templater-date-autofill__label',
+			cls: 'note-architect-date-autofill__label',
 			text: '自动填入当前时间（Templater）',
 		});
 		labelEl.htmlFor = checkboxId;
 
-		const previewEl = row.createDiv('setting-item-description fast-templater-date-autofill__preview');
+		const previewEl = row.createDiv('setting-item-description note-architect-date-autofill__preview');
 
 		const applyAutoFillState = (enabled: boolean, options: { initial?: boolean } = {}) => {
 			const { initial = false } = options;
@@ -534,15 +534,15 @@ export class FieldConfigModal extends Modal {
 		const row = this.createFieldRow(container, { stacked: true });
 		row.createEl('label', {
 			text: '选项列表:',
-			cls: 'fast-templater-field-label'
+			cls: 'note-architect-field-label'
 		});
 
-		const optionsListContainer = row.createDiv('fast-templater-options-list');
+		const optionsListContainer = row.createDiv('note-architect-options-list');
 		this.renderOptionsList(optionsListContainer, field, index);
 
 		const addOptionBtn = row.createEl('button', {
 			text: '添加选项',
-			cls: 'mod-small fast-templater-field-options__btn'
+			cls: 'mod-small note-architect-field-options__btn'
 		});
 		addOptionBtn.onclick = () => this.addOption(field, optionsListContainer, index);
 	}
@@ -554,9 +554,9 @@ export class FieldConfigModal extends Modal {
 		container: HTMLElement,
 		options?: { stacked?: boolean }
 	): HTMLDivElement {
-		const classes = ['fast-templater-field-row'];
+		const classes = ['note-architect-field-row'];
 		if (options?.stacked) {
-			classes.push('fast-templater-field-row--stacked');
+			classes.push('note-architect-field-row--stacked');
 		}
 		return container.createDiv(classes.join(' '));
 	}
@@ -574,11 +574,11 @@ export class FieldConfigModal extends Modal {
 	 * 清理拖拽样式
 	 */
 	private clearDragStyles(containerEl: HTMLElement): void {
-		containerEl.querySelectorAll('.fast-templater-field-item').forEach(el => {
+		containerEl.querySelectorAll('.note-architect-field-item').forEach(el => {
 			el.classList.remove(
-				'fast-templater-field-item--drag-over-before',
-				'fast-templater-field-item--drag-over-after',
-				'fast-templater-field-item--dragging'
+				'note-architect-field-item--drag-over-before',
+				'note-architect-field-item--drag-over-after',
+				'note-architect-field-item--dragging'
 			);
 		});
 	}
@@ -637,13 +637,13 @@ export class FieldConfigModal extends Modal {
 		}
 
 		field.options.forEach((option, optionIndex) => {
-			const optionItem = containerEl.createDiv('fast-templater-option-item');
+			const optionItem = containerEl.createDiv('note-architect-option-item');
 
 			const optionInput = optionItem.createEl('input', {
 				type: 'text',
 				value: option,
 				placeholder: '选项值',
-				cls: 'fast-templater-field-input'
+				cls: 'note-architect-field-input'
 			});
 			optionInput.addEventListener('input', () => {
 				if (field.options) {
@@ -653,7 +653,7 @@ export class FieldConfigModal extends Modal {
 
 			const removeOptionBtn = optionItem.createEl('button', {
 				text: '删除',
-				cls: 'mod-small mod-warning fast-templater-field-options__remove'
+				cls: 'mod-small mod-warning note-architect-field-options__remove'
 			});
 			removeOptionBtn.onclick = () => this.removeOption(field, optionIndex, fieldIndex);
 		});
@@ -717,7 +717,7 @@ export class FieldConfigModal extends Modal {
 			field.options.splice(optionIndex, 1);
 		}
 		// 重新渲染整个字段列表以更新选项显示
-		const containerEl = this.contentEl.querySelector('.fast-templater-fields-list') as HTMLElement;
+		const containerEl = this.contentEl.querySelector('.note-architect-fields-list') as HTMLElement;
 		if (containerEl) {
 			this.renderFieldsList(containerEl);
 		}

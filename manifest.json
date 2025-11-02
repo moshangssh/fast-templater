@@ -1,6 +1,6 @@
 {
 	"id": "fast-templater",
-	"name": "Fast Templater",
+	"name": "Note Architect",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "A visual template plugin for helping users insert template snippets through visual interface.",
